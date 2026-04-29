@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+runtime
+.env
+.env.*
+!.env.example
+!.env.dev.example
+!.env.prod.example
+react-app/node_modules
+react-app/dist
+
