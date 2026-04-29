@@ -11,3 +11,8 @@ runtime/
 react-app/node_modules/
 react-app/dist/
 docs/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
