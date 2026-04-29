@@ -4,7 +4,9 @@
 const fallbackApi = (window.location.protocol === 'file:' || window.location.port === '3000')
   ? 'http://localhost:8000'
   : window.location.origin;
-export const API = window.__API_BASE_URL__ || fallbackApi;
+const envApi = import.meta.env.VITE_API_BASE_URL?.trim();
+const runtimeApi = window.__API_BASE_URL__?.trim();
+export const API = (envApi || runtimeApi || fallbackApi).replace(/\/+$/, '');
 
 function readCookie(name) {
   return document.cookie
@@ -104,4 +106,3 @@ export const api = {
   markReviewed:  (id, reviewed=true) => req('PATCH', `/audit/suspicious-activities/${id}`, { reviewed }),
   getAuditLogs:  (p={})          => req('GET',  `/audit/logs${qs(p)}`),
 };
-

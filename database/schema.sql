@@ -72,11 +72,11 @@ CREATE TABLE IF NOT EXISTS AppUsers (
     CreatedByUserID    INT             NULL,
     CONSTRAINT uq_appusers_username UNIQUE (Username),
     CONSTRAINT fk_appusers_employee FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
     CONSTRAINT fk_appusers_customer FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
+        ON UPDATE RESTRICT ON DELETE RESTRICT,
     CONSTRAINT fk_appusers_creator FOREIGN KEY (CreatedByUserID) REFERENCES AppUsers(UserID)
-        ON UPDATE CASCADE ON DELETE SET NULL,
+        ON UPDATE RESTRICT ON DELETE SET NULL,
     CONSTRAINT chk_appusers_staff_identity CHECK (EmployeeID IS NOT NULL AND CustomerID IS NULL),
     CONSTRAINT chk_appusers_failed_count CHECK (FailedLoginCount >= 0)
 ) ENGINE=InnoDB;
