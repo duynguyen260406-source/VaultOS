@@ -6,10 +6,61 @@ from tabulate import tabulate
 from db_connection import get_db
 
 logger = logging.getLogger(__name__)
+_EMPTY_BRANCH_STATS = {
+    "tx_count": 0,
+    "deposit_volume": 0.0,
+    "withdrawal_volume": 0.0,
+    "transfer_volume": 0.0,
+    "deposit_count": 0,
+    "withdrawal_count": 0,
+    "suspicious_count": 0,
+    "suspicious_amount": 0.0,
+    "unreviewed_count": 0,
+    "loan_count": 0,
+}
 
 
 def _emit_console_output(enabled: bool) -> bool:
     return enabled and sys.stdout.isatty()
+
+
+def _normalize_scalar(value):
+    if hasattr(value, "quantize"):
+        return float(value)
+    if hasattr(value, "isoformat"):
+        return str(value)
+    return value
+
+
+def _merge_transfer_rows(rows):
+    merged = {}
+    for row in rows:
+        tx_type = row["transaction_type"]
+        key = "Transfer" if str(tx_type).lower().startswith("transfer") else tx_type
+        if key not in merged:
+            merged[key] = {
+                "transaction_type": key,
+                "transaction_count": 0,
+                "total_amount": 0.0,
+                "_sides": 0,
+            }
+        count = int(row["transaction_count"])
+        total = float(row["total_amount"])
+        if key == "Transfer":
+            merged[key]["_sides"] += 1
+            merged[key]["transaction_count"] = max(merged[key]["transaction_count"], count)
+            merged[key]["total_amount"] += total
+        else:
+            merged[key]["transaction_count"] += count
+            merged[key]["total_amount"] += total
+
+    result = []
+    for item in merged.values():
+        if item["transaction_type"] == "Transfer" and item["_sides"] >= 2:
+            item["total_amount"] /= 2
+        item.pop("_sides", None)
+        result.append(item)
+    return result
 
 
 def daily_transaction_report(report_date=None, emit_console_output=True):
@@ -361,6 +412,19 @@ def branch_transaction_stats():
         raise
 
 
+def branch_activity_with_stats():
+    """Return branch overview rows merged with transaction and alert stats."""
+    branch_rows = branch_activity_report(emit_console_output=False)
+    stats_map = {row["branch_id"]: row for row in branch_transaction_stats()}
+    return [
+        {
+            **row,
+            **stats_map.get(row["branch_id"], _EMPTY_BRANCH_STATS),
+        }
+        for row in branch_rows
+    ]
+
+
 def branch_activity_report(emit_console_output=True):
     """
     Display a branch activity overview using the vw_branch_overview view.
@@ -426,3 +490,103 @@ def branch_activity_report(emit_console_output=True):
     except MySQLError as e:
         logger.error("Could not generate branch activity report: %s", e)
         raise
+
+
+def dashboard_summary(role, branch_id=None):
+    """Return the combined payload needed by the dashboard for a given role."""
+    if role == "teller":
+        if branch_id is None:
+            return {
+                "stats": {"type": "teller"},
+                "recent_tx": {"type": "teller"},
+                "right_panel": {"type": "teller", "accounts": [], "total": 0},
+            }
+
+        try:
+            with get_db() as (conn, cursor):
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM Accounts
+                    WHERE Status = 'Active' AND BranchID = %s
+                    """,
+                    (branch_id,),
+                )
+                total = int(cursor.fetchone()["total"])
+                cursor.execute(
+                    """
+                    SELECT
+                        a.AccountID       AS account_id,
+                        a.CustomerID      AS customer_id,
+                        a.AccountNumber   AS account_number,
+                        CONCAT(c.FirstName, ' ', c.LastName) AS customer_name,
+                        at.TypeName       AS account_type,
+                        b.BranchName      AS branch_name,
+                        a.Balance         AS balance,
+                        a.Status          AS status,
+                        a.OpenDate        AS created_at
+                    FROM Accounts a
+                    JOIN Customers c   ON a.CustomerID = c.CustomerID
+                    JOIN AccountTypes at ON a.AccountTypeID = at.AccountTypeID
+                    JOIN Branches b    ON a.BranchID = b.BranchID
+                    WHERE a.Status = 'Active' AND a.BranchID = %s
+                    ORDER BY a.AccountID
+                    LIMIT 8
+                    """,
+                    (branch_id,),
+                )
+                rows = cursor.fetchall()
+        except MySQLError as e:
+            logger.error("Could not generate teller dashboard summary: %s", e)
+            raise
+
+        accounts = [
+            {key: _normalize_scalar(value) for key, value in row.items()}
+            for row in rows
+        ]
+        return {
+            "stats": {"type": "teller"},
+            "recent_tx": {"type": "teller"},
+            "right_panel": {"type": "teller", "accounts": accounts, "total": total},
+        }
+
+    today_report = daily_transaction_report(emit_console_output=False)
+    merged_rows = _merge_transfer_rows(today_report.get("rows", []))
+    recent_total = sum(row["total_amount"] for row in merged_rows)
+
+    try:
+        with get_db() as (conn, cursor):
+            cursor.execute("SELECT COUNT(*) AS total FROM Customers")
+            customer_total = int(cursor.fetchone()["total"])
+            cursor.execute("SELECT COUNT(*) AS total FROM Accounts")
+            account_total = int(cursor.fetchone()["total"])
+    except MySQLError as e:
+        logger.error("Could not generate dashboard counts: %s", e)
+        raise
+
+    if role == "manager":
+        right_panel = {
+            "type": "manager",
+            "rows": branch_activity_report(emit_console_output=False),
+        }
+    else:
+        right_panel = {
+            "type": "auditor",
+            "rows": customer_balance_summary(emit_console_output=False),
+        }
+
+    return {
+        "stats": {
+            "type": "manager",
+            "total": float(today_report.get("grand_total", 0.0)),
+            "count": int(today_report.get("grand_count", 0)),
+            "custTotal": customer_total,
+            "acctTotal": account_total,
+        },
+        "recent_tx": {
+            "rows": merged_rows,
+            "date": today_report.get("report_date"),
+            "total": recent_total,
+        },
+        "right_panel": right_panel,
+    }

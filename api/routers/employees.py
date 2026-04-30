@@ -1,9 +1,10 @@
 import os
 import sys
+from typing import Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "app"))
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from mysql.connector import Error as MySQLError
 
 from db_connection import get_db
@@ -30,33 +31,35 @@ _EMPLOYEE_EMAIL_HASH_SQL = (
 def _employee_source(role: str) -> tuple[str, str]:
     if role == ROLE_AUDITOR:
         return (
-            "vw_employee_details_masked",
+            "vw_employee_details_masked e JOIN Branches b ON e.BranchID = b.BranchID",
             """
-            EmployeeID  AS employee_id,
-            BranchID    AS branch_id,
-            ManagerID   AS manager_id,
-            FirstName   AS first_name,
-            LastName    AS last_name,
-            Position    AS position,
-            Salary      AS salary,
-            EmailMasked AS email,
-            PhoneMasked AS phone,
-            HireDate    AS hire_date
+            e.EmployeeID  AS employee_id,
+            e.BranchID    AS branch_id,
+            b.BranchName  AS branch_name,
+            e.ManagerID   AS manager_id,
+            e.FirstName   AS first_name,
+            e.LastName    AS last_name,
+            e.Position    AS position,
+            e.Salary      AS salary,
+            e.EmailMasked AS email,
+            e.PhoneMasked AS phone,
+            e.HireDate    AS hire_date
             """,
         )
     return (
-        "Employees",
+        "Employees e JOIN Branches b ON e.BranchID = b.BranchID",
         f"""
-        EmployeeID  AS employee_id,
-        BranchID    AS branch_id,
-        ManagerID   AS manager_id,
-        FirstName   AS first_name,
-        LastName    AS last_name,
-        Position    AS position,
-        Salary      AS salary,
-        {_EMPLOYEE_EMAIL_SQL} AS email,
-        {_EMPLOYEE_PHONE_SQL} AS phone,
-        HireDate    AS hire_date
+        e.EmployeeID  AS employee_id,
+        e.BranchID    AS branch_id,
+        b.BranchName  AS branch_name,
+        e.ManagerID   AS manager_id,
+        e.FirstName   AS first_name,
+        e.LastName    AS last_name,
+        e.Position    AS position,
+        e.Salary      AS salary,
+        {_EMPLOYEE_EMAIL_SQL.replace("Email", "e.Email")} AS email,
+        {_EMPLOYEE_PHONE_SQL.replace("Phone", "e.Phone")} AS phone,
+        e.HireDate    AS hire_date
         """,
     )
 
@@ -65,6 +68,7 @@ def _row_to_detail(row: dict) -> EmployeeDetail:
     return EmployeeDetail(
         employee_id=row["employee_id"],
         branch_id=row["branch_id"],
+        branch_name=row.get("branch_name"),
         manager_id=row.get("manager_id"),
         first_name=row["first_name"],
         last_name=row["last_name"],
@@ -77,9 +81,14 @@ def _row_to_detail(row: dict) -> EmployeeDetail:
 
 
 @router.get("", response_model=EmployeeListResponse)
-def list_employees(current_user: dict = Depends(require_manager_or_auditor)):
+def list_employees(
+    branch_id: Optional[int] = Query(None, ge=1),
+    current_user: dict = Depends(require_manager_or_auditor),
+):
     """List all employees."""
     source, select_sql = _employee_source(current_user["role"])
+    where_sql = "WHERE e.BranchID = %s" if branch_id is not None else ""
+    params = (branch_id,) if branch_id is not None else ()
     try:
         with get_db() as (conn, cursor):
             cursor.execute(
@@ -87,8 +96,10 @@ def list_employees(current_user: dict = Depends(require_manager_or_auditor)):
                 SELECT
                     {select_sql}
                 FROM {source}
-                ORDER BY EmployeeID
-                """
+                {where_sql}
+                ORDER BY e.EmployeeID
+                """,
+                params,
             )
             rows = cursor.fetchall()
     except MySQLError as e:
@@ -107,7 +118,7 @@ def get_employee(employee_id: int, current_user: dict = Depends(require_manager_
                 SELECT
                     {select_sql}
                 FROM {source}
-                WHERE EmployeeID = %s
+                WHERE e.EmployeeID = %s
                 """,
                 (employee_id,),
             )
@@ -155,7 +166,7 @@ def create_employee(body: CreateEmployeeRequest, _=Depends(require_manager)):
             new_id = cursor.lastrowid
             _, select_sql = _employee_source("manager")
             cursor.execute(
-                f"SELECT {select_sql} FROM Employees WHERE EmployeeID = %s",
+                f"SELECT {select_sql} FROM Employees e JOIN Branches b ON e.BranchID = b.BranchID WHERE e.EmployeeID = %s",
                 (new_id,),
             )
             row = cursor.fetchone()
@@ -204,7 +215,7 @@ def update_employee(employee_id: int, body: UpdateEmployeeRequest, _=Depends(req
                 raise HTTPException(status_code=404, detail=f"Employee {employee_id} not found")
             _, select_sql = _employee_source("manager")
             cursor.execute(
-                f"SELECT {select_sql} FROM Employees WHERE EmployeeID = %s",
+                f"SELECT {select_sql} FROM Employees e JOIN Branches b ON e.BranchID = b.BranchID WHERE e.EmployeeID = %s",
                 (employee_id,),
             )
             row = cursor.fetchone()

@@ -704,19 +704,17 @@ function BalancesTab() {
 
 function BranchTab() {
   const [data,           setData]          = useState(null);
-  const [txStats,        setTxStats]       = useState(null);
   const [loading,        setLoading]       = useState(false);
   const [error,          setError]         = useState('');
   const [selectedBranch, setSelectedBranch]= useState(null);
-  const [allEmps,        setAllEmps]       = useState(null);
+  const [branchEmployees,setBranchEmployees]= useState({});
   const [empsLoading,    setEmpsLoading]   = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([api.branchReport(), api.branchTransactionStats()])
-      .then(([branchData, statsData]) => {
-        setData(branchData);
-        setTxStats(Array.isArray(statsData) ? statsData : []);
+    api.branchReport()
+      .then(branchData => {
+        setData(Array.isArray(branchData) ? branchData : []);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -725,12 +723,14 @@ function BranchTab() {
   async function openBranchDetail(row) {
     if (selectedBranch?.branch_id === row.branch_id) { setSelectedBranch(null); return; }
     setSelectedBranch(row);
-    if (allEmps === null) {
+    if (!branchEmployees[row.branch_id]) {
       setEmpsLoading(true);
       try {
-        const d = await api.listEmployees();
-        setAllEmps(d.employees || []);
-      } catch { setAllEmps([]); }
+        const d = await api.listEmployees({ branch_id: row.branch_id });
+        setBranchEmployees(prev => ({ ...prev, [row.branch_id]: d.employees || [] }));
+      } catch {
+        setBranchEmployees(prev => ({ ...prev, [row.branch_id]: [] }));
+      }
       finally { setEmpsLoading(false); }
     }
   }
@@ -740,11 +740,7 @@ function BranchTab() {
   if (!Array.isArray(data)) return null;
   if (!data.length) return html`<div className="empty-state"><div className="empty-state-title">No data</div></div>`;
 
-  const statsMap = {};
-  (txStats || []).forEach(s => { statsMap[s.branch_id] = s; });
-
-  const EMPTY_STATS = { tx_count:0, deposit_volume:0, withdrawal_volume:0, transfer_volume:0, deposit_count:0, withdrawal_count:0, suspicious_count:0, suspicious_amount:0, unreviewed_count:0, loan_count:0 };
-  const merged = data.map(r => ({ ...r, ...(statsMap[r.branch_id] || EMPTY_STATS) }));
+  const merged = data;
 
   const totalDeposits  = data.reduce((s, r) => s + (r.total_deposits ?? 0), 0);
   const totalAccounts  = data.reduce((s, r) => s + (r.account_count  ?? 0), 0);
@@ -815,10 +811,12 @@ function BranchTab() {
     );
   };
 
-  const branchEmps = selectedBranch && allEmps !== null
-    ? allEmps.filter(e => e.branch_id === selectedBranch.branch_id)
+  const branchEmps = selectedBranch
+    ? branchEmployees[selectedBranch.branch_id] || null
     : null;
-  const selStats = selectedBranch ? (statsMap[selectedBranch.branch_id] || null) : null;
+  const selStats = selectedBranch
+    ? merged.find(r => r.branch_id === selectedBranch.branch_id) || null
+    : null;
 
   return html`
     <div>
@@ -1005,7 +1003,6 @@ function BranchTab() {
 
 function EmployeesTab() {
   const [employees, setEmployees] = useState(null);
-  const [branches,  setBranches]  = useState(null);
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
   const [search,    setSearch]    = useState('');
@@ -1013,10 +1010,9 @@ function EmployeesTab() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([api.listEmployees(), api.listBranches()])
-      .then(([empRes, brRes]) => {
+    api.listEmployees()
+      .then(empRes => {
         setEmployees(empRes.employees || []);
-        setBranches(Array.isArray(brRes) ? brRes : brRes.branches || []);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -1026,12 +1022,9 @@ function EmployeesTab() {
   if (error)   return html`<div className="alert alert-danger">${error}</div>`;
   if (!employees) return null;
 
-  const branchMap = {};
-  (branches || []).forEach(b => { branchMap[b.branch_id] = b.branch_name; });
-
   const byBranch = {};
   for (const e of employees) {
-    const bn = branchMap[e.branch_id] || e.branch_name || 'Unknown';
+    const bn = e.branch_name || 'Unknown';
     if (!byBranch[bn]) byBranch[bn] = { count: 0, salarySum: 0, salaryCount: 0 };
     byBranch[bn].count++;
     if (e.salary) { byBranch[bn].salarySum += e.salary; byBranch[bn].salaryCount++; }
@@ -1096,7 +1089,7 @@ function EmployeesTab() {
   const filtered = employees
     .filter(e => {
       if (!search) return true;
-      const bn = branchMap[e.branch_id] || e.branch_name || '';
+      const bn = e.branch_name || '';
       return `${e.first_name} ${e.last_name} ${e.position || ''} ${bn}`.toLowerCase().includes(search.toLowerCase());
     })
     .sort((a, b) => {
@@ -1108,7 +1101,7 @@ function EmployeesTab() {
   const handleExport = () => {
     exportCSV(
       ['ID', 'First Name', 'Last Name', 'Position', 'Branch', 'Email', 'Phone', 'Salary (VND)', 'Hire Date'],
-      filtered.map(e => [e.employee_id, e.first_name, e.last_name, e.position || '', branchMap[e.branch_id] || e.branch_name || '', e.email || '', e.phone || '', e.salary ?? '', e.hire_date || '']),
+      filtered.map(e => [e.employee_id, e.first_name, e.last_name, e.position || '', e.branch_name || '', e.email || '', e.phone || '', e.salary ?? '', e.hire_date || '']),
       'employees.csv'
     );
   };
@@ -1167,7 +1160,7 @@ function EmployeesTab() {
                   <td style=${{ fontSize:11, color:'var(--muted-foreground)' }}>#${e.employee_id}</td>
                   <td style=${{ fontWeight:500 }}>${e.first_name} ${e.last_name}</td>
                   <td style=${{ fontSize:12 }}>${e.position || '-'}</td>
-                  <td style=${{ fontSize:12, color:'var(--muted-foreground)' }}>${branchMap[e.branch_id] || e.branch_name || '-'}</td>
+                  <td style=${{ fontSize:12, color:'var(--muted-foreground)' }}>${e.branch_name || '-'}</td>
                   <td style=${{ fontSize:12 }}>${e.email || '-'}</td>
                   <td style=${{ textAlign:'right', color:'#22c55e', fontSize:12, fontVariantNumeric:'tabular-nums' }}>${e.salary != null ? fmt.currency(e.salary) : '-'}</td>
                   <td style=${{ fontSize:11, color:'var(--muted-foreground)' }}>${e.hire_date ? fmt.date(e.hire_date) : '-'}</td>

@@ -24,8 +24,6 @@ export default function Admin() {
 
   useEffect(() => {
     loadTab(tab);
-    // Keep branch list fresh so employee rows can resolve branch names
-    if (tab !== 'branches' && !data['branches']) loadTab('branches');
   }, [tab]);
 
   async function loadTab(t) {
@@ -149,9 +147,6 @@ export default function Admin() {
     return text.includes(s) && matchRole;
   });
 
-  // Look up branch name for employees
-  const branchMap = (data['branches'] || []).reduce((m, b) => { m[b.branch_id] = b.branch_name; return m; }, {});
-
   return html`
     <>
       <header className="topbar">
@@ -243,7 +238,7 @@ export default function Admin() {
                       <td style=${{ fontSize:11, color:'var(--muted-foreground)' }}>#${e.employee_id}</td>
                       <td style=${{ fontWeight:500 }}>${e.first_name} ${e.last_name}</td>
                       <td style=${{ fontSize:12 }}>${e.position || '-'}</td>
-                      <td style=${{ fontSize:12 }}>${branchMap[e.branch_id] || e.branch_name || e.branch_id || '-'}</td>
+                      <td style=${{ fontSize:12 }}>${e.branch_name || e.branch_id || '-'}</td>
                       <td style=${{ fontSize:12 }}>${e.email || '-'}</td>
                       <td style=${{ fontSize:11, color:'var(--muted-foreground)' }}>${e.hire_date ? fmt.date(e.hire_date) : '-'}</td>
                       <td style=${{ fontSize:12 }}>${e.salary != null ? fmt.currency(e.salary) : '-'}</td>
@@ -373,5 +368,4 @@ export default function Admin() {
     </>
   `;
 }
-
 

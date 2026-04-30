@@ -12,6 +12,7 @@ from dependencies import db_error_to_http, require_manager_or_auditor, require_m
 from models.audit import (
     AuditLogItem,
     AuditLogResponse,
+    AuditLogSummaryResponse,
     ReviewStatusUpdate,
     SuspiciousActivityItem,
     SuspiciousActivityResponse,
@@ -173,3 +174,78 @@ def list_audit_logs(
         for row in rows
     ]
     return AuditLogResponse(items=items, total=total)
+
+
+@router.get("/logs-summary", response_model=AuditLogSummaryResponse)
+def audit_logs_summary(
+    days: int = Query(14, ge=1, le=90),
+    _=Depends(require_manager_or_auditor),
+):
+    try:
+        with get_db() as (conn, cursor):
+            cursor.execute("SELECT COUNT(*) AS total FROM AuditLog")
+            total = int(cursor.fetchone()["total"])
+
+            cursor.execute(
+                """
+                SELECT COALESCE(ActionType, 'UNKNOWN') AS label, COUNT(*) AS count
+                FROM AuditLog
+                GROUP BY COALESCE(ActionType, 'UNKNOWN')
+                """
+            )
+            action_counts = {
+                row["label"]: int(row["count"])
+                for row in cursor.fetchall()
+            }
+
+            cursor.execute(
+                """
+                SELECT COALESCE(TableName, 'unknown') AS label, COUNT(*) AS count
+                FROM AuditLog
+                GROUP BY COALESCE(TableName, 'unknown')
+                ORDER BY count DESC
+                """
+            )
+            table_counts = {
+                row["label"]: int(row["count"])
+                for row in cursor.fetchall()
+            }
+
+            cursor.execute(
+                """
+                SELECT COALESCE(PerformedBy, 'system') AS label, COUNT(*) AS count
+                FROM AuditLog
+                GROUP BY COALESCE(PerformedBy, 'system')
+                ORDER BY count DESC
+                LIMIT 8
+                """
+            )
+            actor_counts = {
+                row["label"]: int(row["count"])
+                for row in cursor.fetchall()
+            }
+
+            cursor.execute(
+                """
+                SELECT DATE(ActionTimestamp) AS report_date, COUNT(*) AS count
+                FROM AuditLog
+                WHERE ActionTimestamp >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+                GROUP BY DATE(ActionTimestamp)
+                ORDER BY report_date
+                """,
+                (days - 1,),
+            )
+            daily_counts = {
+                str(row["report_date"]): int(row["count"])
+                for row in cursor.fetchall()
+            }
+    except MySQLError as e:
+        raise db_error_to_http(e)
+
+    return AuditLogSummaryResponse(
+        total=total,
+        action_counts=action_counts,
+        table_counts=table_counts,
+        actor_counts=actor_counts,
+        daily_counts=daily_counts,
+    )

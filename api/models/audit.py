@@ -31,5 +31,13 @@ class AuditLogResponse(BaseModel):
     total: int
 
 
+class AuditLogSummaryResponse(BaseModel):
+    total: int
+    action_counts: dict[str, int]
+    table_counts: dict[str, int]
+    actor_counts: dict[str, int]
+    daily_counts: dict[str, int]
+
+
 class ReviewStatusUpdate(BaseModel):
     reviewed: bool = True

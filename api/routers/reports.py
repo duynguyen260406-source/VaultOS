@@ -9,11 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from mysql.connector import Error as MySQLError
 
 import reports as reports_module
-from dependencies import db_error_to_http, require_manager_or_auditor
+from dependencies import db_error_to_http, require_any_role, require_manager_or_auditor
 from models.reports import (
     BranchActivityRow,
     BranchTransactionStatsRow,
     CustomerBalanceRow,
+    DashboardSummaryResponse,
     DailyReportResponse,
     DailyReportRow,
     TransactionDetailRow,
@@ -149,19 +150,21 @@ def branch_transactions(_=Depends(require_manager_or_auditor)):
 @router.get("/branch-activity", response_model=list[BranchActivityRow])
 def branch_activity(_=Depends(require_manager_or_auditor)):
     try:
-        rows = reports_module.branch_activity_report(emit_console_output=False)
+        rows = reports_module.branch_activity_with_stats()
     except MySQLError as e:
         raise db_error_to_http(e)
     if not rows:
         return []
-    return [
-        BranchActivityRow(
-            branch_id=int(row["branch_id"]),
-            branch_name=row["branch_name"],
-            city=row["city"],
-            account_count=int(row["account_count"]),
-            employee_count=int(row["employee_count"]),
-            total_deposits=float(row["total_deposits"]),
+    return [BranchActivityRow(**row) for row in rows]
+
+
+@router.get("/dashboard-summary", response_model=DashboardSummaryResponse)
+def dashboard_summary(current_user: dict = Depends(require_any_role)):
+    try:
+        payload = reports_module.dashboard_summary(
+            current_user["role"],
+            current_user.get("branch_id"),
         )
-        for row in rows
-    ]
+    except MySQLError as e:
+        raise db_error_to_http(e)
+    return DashboardSummaryResponse(**payload)

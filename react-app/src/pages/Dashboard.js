@@ -32,71 +32,20 @@ export default function Dashboard() {
 
   async function loadAll() {
     setRefreshing(true);
-    await Promise.all([loadStats(), loadRecentTx(), loadRightPanel()]);
-    setRefreshing(false);
-  }
-
-  async function loadStats() {
     try {
-      if (role === 'teller') {
-        setStats({ type: 'teller' });
-      } else {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const [report, customers, accounts] = await Promise.allSettled([
-          api.dailyReport({ report_date: todayStr }),
-          api.listCustomers({ limit: 1 }),
-          api.searchAccounts(''),
-        ]);
-        const r = report.status === 'fulfilled' ? report.value : null;
-        const custTotal = customers.status === 'fulfilled' ? (customers.value.total || 0) : '-';
-        const acctTotal = accounts.status === 'fulfilled' ? (accounts.value.total || accounts.value.accounts?.length || 0) : '-';
-        setStats({ type: 'manager', total: r?.grand_total ?? 0, count: r?.grand_count ?? 0, custTotal, acctTotal });
-      }
-    } catch (e) { setStatsError(e.message); }
-  }
-
-  async function loadRecentTx() {
-    if (role === 'teller') { setRecentTx({ type: 'teller' }); return; }
-    try {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const r = await api.dailyReport({ report_date: todayStr });
-      const rows = r?.rows || [];
-      // merge transfer in/out
-      const merged = {};
-      for (const row of rows) {
-        const key = row.transaction_type?.toLowerCase().startsWith('transfer') ? 'Transfer' : row.transaction_type;
-        if (!merged[key]) merged[key] = { transaction_type: key, transaction_count: 0, total_amount: 0, _sides: 0 };
-        if (key === 'Transfer') {
-          merged[key]._sides++;
-          merged[key].transaction_count = Math.max(merged[key].transaction_count, Number(row.transaction_count) || 0);
-          merged[key].total_amount += Number(row.total_amount) || 0;
-        } else {
-          merged[key].transaction_count += Number(row.transaction_count) || 0;
-          merged[key].total_amount += Number(row.total_amount) || 0;
-        }
-      }
-      for (const v of Object.values(merged)) {
-        if (v.transaction_type === 'Transfer' && v._sides >= 2) v.total_amount /= 2;
-      }
-      const mergedRows = Object.values(merged);
-      const grandTotal = mergedRows.reduce((s, r) => s + r.total_amount, 0);
-      setRecentTx({ rows: mergedRows, date: r?.report_date, total: grandTotal });
-    } catch (e) { setRecentTx({ error: e.message }); }
-  }
-
-  async function loadRightPanel() {
-    try {
-      if (role === 'teller') {
-        const res = await api.searchAccounts('');
-        setRightPanel({ type: 'teller', accounts: res?.accounts || [], total: res?.total || 0 });
-      } else if (role === 'manager') {
-        const rows = await api.branchReport();
-        setRightPanel({ type: 'manager', rows: rows || [] });
-      } else {
-        const rows = await api.balancesReport();
-        setRightPanel({ type: 'auditor', rows: rows || [] });
-      }
-    } catch (e) { setRightPanel({ error: e.message }); }
+      setStatsError('');
+      const summary = await api.dashboardSummary();
+      setStats(summary?.stats || null);
+      setRecentTx(summary?.recent_tx || null);
+      setRightPanel(summary?.right_panel || null);
+    } catch (e) {
+      setStatsError(e.message);
+      setStats(null);
+      setRecentTx(null);
+      setRightPanel(null);
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   const TYPE_COLOR = { deposit:'#22c55e', withdrawal:'#ef4444', transfer:'#91c5ff' };

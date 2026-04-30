@@ -6,6 +6,7 @@ from typing import Optional, List
 class EmployeeDetail(BaseModel):
     employee_id: int
     branch_id: int
+    branch_name: Optional[str] = None
     manager_id: Optional[int] = None
     first_name: str
     last_name: str

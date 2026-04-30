@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Any, Optional
 
 
 class DailyReportRow(BaseModel):
@@ -38,6 +38,16 @@ class BranchActivityRow(BaseModel):
     account_count: int
     employee_count: int
     total_deposits: float
+    tx_count: int = 0
+    deposit_volume: float = 0.0
+    withdrawal_volume: float = 0.0
+    transfer_volume: float = 0.0
+    deposit_count: int = 0
+    withdrawal_count: int = 0
+    suspicious_count: int = 0
+    suspicious_amount: float = 0.0
+    unreviewed_count: int = 0
+    loan_count: int = 0
 
 
 class BranchTransactionStatsRow(BaseModel):
@@ -53,3 +63,9 @@ class BranchTransactionStatsRow(BaseModel):
     suspicious_amount: float
     unreviewed_count: int
     loan_count: int = 0
+
+
+class DashboardSummaryResponse(BaseModel):
+    stats: dict[str, Any]
+    recent_tx: dict[str, Any]
+    right_panel: dict[str, Any]

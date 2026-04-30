@@ -82,6 +82,7 @@ export const api = {
   dailyReport:           (p={}) => req('GET',  `/reports/daily-transactions${qs(p)}`),
   dailyReportRange:      (p={}) => req('GET',  `/reports/daily-transactions-range${qs(p)}`),
   dailyReportDetail:     (p={}) => req('GET',  `/reports/daily-transactions-detail${qs(p)}`),
+  dashboardSummary:      ()     => req('GET',  '/reports/dashboard-summary'),
   balancesReport:        ()     => req('GET',  '/reports/customer-balances'),
   branchReport:          ()     => req('GET',  '/reports/branch-activity'),
   branchTransactionStats:()     => req('GET',  '/reports/branch-transactions'),
@@ -92,7 +93,7 @@ export const api = {
   resetPwd:      (id,d)     => req('POST', `/users/${id}/reset-password`, d),
   unlockUser:    (id)       => req('POST', `/users/${id}/unlock`),
 
-  listEmployees: ()         => req('GET',  '/employees'),
+  listEmployees: (p={})     => req('GET',  `/employees${qs(p)}`),
   createEmployee:(d)        => req('POST', '/employees', d),
   updateEmployee:(id,d)     => req('PUT',  `/employees/${id}`, d),
 
@@ -106,4 +107,5 @@ export const api = {
   getSuspiciousActivities:(p={}) => req('GET',  `/audit/suspicious-activities${qs(p)}`),
   markReviewed:  (id, reviewed=true) => req('PATCH', `/audit/suspicious-activities/${id}`, { reviewed }),
   getAuditLogs:  (p={})          => req('GET',  `/audit/logs${qs(p)}`),
+  getAuditLogSummary:(p={})      => req('GET',  `/audit/logs-summary${qs(p)}`),
 };

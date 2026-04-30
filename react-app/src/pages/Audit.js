@@ -559,10 +559,8 @@ function AuditTab() {
   async function loadSummary() {
     setSummaryLoading(true);
     try {
-      // Load a large recent window for summary stats
-      const data = await api.getAuditLogs({ page: 1, page_size: 500 });
-      setSummary(data.items || data.logs || data || []);
-    } catch { setSummary([]); }
+      setSummary(await api.getAuditLogSummary({ days: 14 }));
+    } catch { setSummary({ total: 0, action_counts: {}, table_counts: {}, actor_counts: {}, daily_counts: {} }); }
     finally { setSummaryLoading(false); }
   }
 
@@ -599,30 +597,10 @@ function AuditTab() {
   const pages = Math.ceil(total / PAGE_SIZE);
 
   // ── summary charts ──
-  const actionCounts = (summary || []).reduce((acc, r) => {
-    const k = r.action_type || 'UNKNOWN';
-    acc[k] = (acc[k] || 0) + 1;
-    return acc;
-  }, {});
-
-  const tableCounts = (summary || []).reduce((acc, r) => {
-    const k = r.table_name || 'unknown';
-    acc[k] = (acc[k] || 0) + 1;
-    return acc;
-  }, {});
-
-  const actorCounts = (summary || []).reduce((acc, r) => {
-    const k = r.performed_by || 'system';
-    acc[k] = (acc[k] || 0) + 1;
-    return acc;
-  }, {});
-
-  // daily activity (last 14 days from summary)
-  const dailyMap = (summary || []).reduce((acc, r) => {
-    const d = (r.performed_at || r.timestamp || r.created_at || '').slice(0, 10);
-    if (d) acc[d] = (acc[d] || 0) + 1;
-    return acc;
-  }, {});
+  const actionCounts = summary?.action_counts || {};
+  const tableCounts = summary?.table_counts || {};
+  const actorCounts = summary?.actor_counts || {};
+  const dailyMap = summary?.daily_counts || {};
   const last14 = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (13 - i));
     return d.toISOString().slice(0, 10);
@@ -723,7 +701,7 @@ function AuditTab() {
     <div>
       ${summaryLoading
         ? html`<div style=${{ marginBottom:14 }}><${Spinner} /></div>`
-        : !(summary !== null && summary.length > 0) ? null : html`
+        : !(summary && summary.total > 0) ? null : html`
         <div style=${{ display:'flex', gap:10, marginBottom:18, flexWrap:'wrap' }}>
           <${KPI} label="Total ops (sample)" value=${fmt.num(totalOps)} />
           <${KPI} label="INSERT"  value=${fmt.num(actionCounts.INSERT  || 0)} accent="#22c55e" />
