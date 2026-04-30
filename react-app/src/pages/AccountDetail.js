@@ -135,7 +135,7 @@ export default function AccountDetail() {
                   <tr key=${t.transaction_id || t.reference_id}>
                     <td style="font-size:12px;color:var(--body-muted);">${fmt.datetime(t.transaction_date)}</td>
                     <td><${TxBadge} type=${t.transaction_type} /></td>
-                    <td className=${isCredit ? 'amount-pos' : 'amount-neg'} style="font-weight:600;">${isCredit ? '+' : 'âˆ’'}${fmt.currency(t.amount)}</td>
+                    <td className=${isCredit ? 'amount-pos' : 'amount-neg'} style="font-weight:600;">${isCredit ? '+' : '-'}${fmt.currency(t.amount)}</td>
                     <td style="font-size:12px;color:var(--body-muted);">${t.description || '-'}</td>
                     <td style="font-size:11px;color:var(--body-muted);font-family:monospace;">${t.reference_id || '-'}</td>
                   </tr>
