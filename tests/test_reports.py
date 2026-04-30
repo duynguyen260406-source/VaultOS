@@ -42,6 +42,24 @@ def test_daily_report_future_date_returns_empty(client: httpx.Client):
     assert body["rows"] == []
 
 
+def test_daily_report_range_returns_requested_day_window(client: httpx.Client):
+    r = client.get("/reports/daily-transactions-range", params={"days": 3, "end_date": "2024-01-16"})
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body, list)
+    assert len(body) == 3
+    assert [item["report_date"] for item in body] == ["2024-01-14", "2024-01-15", "2024-01-16"]
+    assert all("rows" in item for item in body)
+    assert all("grand_count" in item for item in body)
+    assert all("grand_total" in item for item in body)
+
+
+def test_daily_report_range_invalid_end_date_format(client: httpx.Client):
+    r = client.get("/reports/daily-transactions-range", params={"days": 7, "end_date": "16-01-2024"})
+    assert r.status_code == 400
+    assert "detail" in r.json()
+
+
 def test_customer_balances_returns_list(client: httpx.Client):
     r = client.get("/reports/customer-balances")
     assert r.status_code == 200

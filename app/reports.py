@@ -1,5 +1,6 @@
 import logging
-from datetime import date
+import sys
+from datetime import date, timedelta
 from mysql.connector import Error as MySQLError
 from tabulate import tabulate
 from db_connection import get_db
@@ -7,7 +8,11 @@ from db_connection import get_db
 logger = logging.getLogger(__name__)
 
 
-def daily_transaction_report(report_date=None):
+def _emit_console_output(enabled: bool) -> bool:
+    return enabled and sys.stdout.isatty()
+
+
+def daily_transaction_report(report_date=None, emit_console_output=True):
     """
     Display a transaction summary for a given date, grouped by transaction type
     with count and total amount.
@@ -19,9 +24,11 @@ def daily_transaction_report(report_date=None):
     if report_date is None:
         report_date = date.today()
 
-    print(f"\n{'=' * 50}")
-    print(f"  Daily Transaction Report  --  {report_date}")
-    print(f"{'=' * 50}")
+    emit_console = _emit_console_output(emit_console_output)
+    if emit_console:
+        print(f"\n{'=' * 50}")
+        print(f"  Daily Transaction Report  --  {report_date}")
+        print(f"{'=' * 50}")
 
     try:
         with get_db() as (conn, cursor):
@@ -40,7 +47,8 @@ def daily_transaction_report(report_date=None):
             rows = cursor.fetchall()
 
             if not rows:
-                print("\n  No transactions found for this date.\n")
+                if emit_console:
+                    print("\n  No transactions found for this date.\n")
                 return {"report_date": str(report_date), "rows": [], "grand_count": 0, "grand_total": 0.0}
 
             table_data = []
@@ -68,8 +76,9 @@ def daily_transaction_report(report_date=None):
             table_data.append(["TOTAL", grand_count, f"${grand_total:,.2f}"])
 
             headers = ["Transaction Type", "Count", "Total Amount"]
-            print(tabulate(table_data, headers=headers, tablefmt="grid"))
-            print()
+            if emit_console:
+                print(tabulate(table_data, headers=headers, tablefmt="grid"))
+                print()
 
             return {
                 "report_date": str(report_date),
@@ -83,16 +92,84 @@ def daily_transaction_report(report_date=None):
         raise
 
 
-def customer_balance_summary():
+def daily_transaction_range_report(days, end_date=None):
+    """Return one summary object per day for a contiguous window ending at end_date."""
+    if days < 1:
+        raise ValueError("days must be at least 1")
+
+    if end_date is None:
+        end_date = date.today()
+    start_date = end_date - timedelta(days=days - 1)
+
+    try:
+        with get_db() as (conn, cursor):
+            cursor.execute(
+                """
+                SELECT
+                    TransactionDate  AS transaction_date,
+                    TransactionType  AS transaction_type,
+                    TransactionCount AS transaction_count,
+                    TotalAmount      AS total_amount
+                FROM vw_transaction_summary
+                WHERE TransactionDate BETWEEN %s AND %s
+                ORDER BY TransactionDate, TransactionType
+                """,
+                (start_date, end_date),
+            )
+            rows = cursor.fetchall()
+
+        results = {}
+        ordered_dates = []
+        for offset in range(days):
+            current_date = start_date + timedelta(days=offset)
+            key = str(current_date)
+            ordered_dates.append(key)
+            results[key] = {
+                "report_date": key,
+                "rows": [],
+                "grand_count": 0,
+                "grand_total": 0.0,
+            }
+
+        for row in rows:
+            key = str(row["transaction_date"])
+            if key not in results:
+                continue
+            count = int(row["transaction_count"])
+            total = float(row["total_amount"])
+            results[key]["rows"].append(
+                {
+                    "transaction_type": row["transaction_type"],
+                    "transaction_count": count,
+                    "total_amount": total,
+                }
+            )
+            results[key]["grand_count"] += count
+            results[key]["grand_total"] += total
+
+        return [results[key] for key in ordered_dates]
+    except MySQLError as e:
+        logger.error(
+            "Could not generate %s-day transaction report ending on %s: %s",
+            days,
+            end_date,
+            e,
+        )
+        raise
+
+
+def customer_balance_summary(emit_console_output=True):
     """
     Display all customers with their total balances using the
     vw_customer_balances view.
 
     Returns a list of dicts with customer_id, customer_name, total_balance.
     """
-    print(f"\n{'=' * 50}")
-    print("  Customer Balance Summary")
-    print(f"{'=' * 50}")
+    emit_console = _emit_console_output(emit_console_output)
+    if emit_console:
+        print(f"\n{'=' * 50}")
+        print("  Customer Balance Summary")
+        print(f"{'=' * 50}")
 
     try:
         with get_db() as (conn, cursor):
@@ -108,7 +185,8 @@ def customer_balance_summary():
             rows = cursor.fetchall()
 
             if not rows:
-                print("\n  No customer balance data available.\n")
+                if emit_console:
+                    print("\n  No customer balance data available.\n")
                 return []
 
             result_rows = []
@@ -123,8 +201,9 @@ def customer_balance_summary():
                 table_data.append([r["customer_id"], r["customer_name"], f"${total:,.2f}"])
 
             headers = ["Customer ID", "Customer Name", "Total Balance"]
-            print(tabulate(table_data, headers=headers, tablefmt="grid"))
-            print()
+            if emit_console:
+                print(tabulate(table_data, headers=headers, tablefmt="grid"))
+                print()
 
             return result_rows
 
@@ -282,16 +361,18 @@ def branch_transaction_stats():
         raise
 
 
-def branch_activity_report():
+def branch_activity_report(emit_console_output=True):
     """
     Display a branch activity overview using the vw_branch_overview view.
 
     Returns a list of dicts with branch_id, branch_name, city, account_count,
     employee_count, and total_deposits.
     """
-    print(f"\n{'=' * 50}")
-    print("  Branch Activity Report")
-    print(f"{'=' * 50}")
+    emit_console = _emit_console_output(emit_console_output)
+    if emit_console:
+        print(f"\n{'=' * 50}")
+        print("  Branch Activity Report")
+        print(f"{'=' * 50}")
 
     try:
         with get_db() as (conn, cursor):
@@ -311,7 +392,8 @@ def branch_activity_report():
             rows = cursor.fetchall()
 
             if not rows:
-                print("\n  No branch activity data available.\n")
+                if emit_console:
+                    print("\n  No branch activity data available.\n")
                 return []
 
             result_rows = []
@@ -335,8 +417,9 @@ def branch_activity_report():
                 ])
 
             headers = ["Branch Name", "City", "Accounts", "Employees", "Total Deposits"]
-            print(tabulate(table_data, headers=headers, tablefmt="grid"))
-            print()
+            if emit_console:
+                print(tabulate(table_data, headers=headers, tablefmt="grid"))
+                print()
 
             return result_rows
 

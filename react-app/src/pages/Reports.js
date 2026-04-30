@@ -395,13 +395,21 @@ function TrendTab() {
   const [error,   setError]   = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     setData(null); setError(''); setLoading(true);
-    const days = lastNDays(winDays);
-    Promise.all(days.map(d => api.dailyReport({ report_date: d })
-      .catch(() => ({ report_date: d, rows: [], grand_count: 0, grand_total: 0 }))))
-      .then(results => setData(results.map((r, i) => ({ ...r, report_date: days[i] }))))
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+
+    api.dailyReportRange({ days: winDays })
+      .then(results => {
+        if (!cancelled) setData(Array.isArray(results) ? results : []);
+      })
+      .catch(e => {
+        if (!cancelled) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, [winDays]);
 
   const windowPills = html`

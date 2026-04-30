@@ -80,6 +80,7 @@ export const api = {
   transfer:      (d)        => req('POST', '/transactions/transfer', d),
 
   dailyReport:           (p={}) => req('GET',  `/reports/daily-transactions${qs(p)}`),
+  dailyReportRange:      (p={}) => req('GET',  `/reports/daily-transactions-range${qs(p)}`),
   dailyReportDetail:     (p={}) => req('GET',  `/reports/daily-transactions-detail${qs(p)}`),
   balancesReport:        ()     => req('GET',  '/reports/customer-balances'),
   branchReport:          ()     => req('GET',  '/reports/branch-activity'),

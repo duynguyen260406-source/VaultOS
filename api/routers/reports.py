@@ -34,7 +34,7 @@ def daily_transactions(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
     try:
-        result = reports_module.daily_transaction_report(parsed_date)
+        result = reports_module.daily_transaction_report(parsed_date, emit_console_output=False)
     except MySQLError as e:
         raise db_error_to_http(e)
     if result is None:
@@ -58,6 +58,42 @@ def daily_transactions(
         grand_count=int(result["grand_count"]),
         grand_total=float(result["grand_total"]),
     )
+
+
+@router.get("/daily-transactions-range", response_model=list[DailyReportResponse])
+def daily_transactions_range(
+    days: int = Query(14, ge=1, le=365),
+    end_date: Optional[str] = Query(None),
+    _=Depends(require_manager_or_auditor),
+):
+    parsed_end_date = None
+    if end_date:
+        try:
+            parsed_end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+    try:
+        result = reports_module.daily_transaction_range_report(days, parsed_end_date)
+    except MySQLError as e:
+        raise db_error_to_http(e)
+
+    return [
+        DailyReportResponse(
+            report_date=item["report_date"],
+            rows=[
+                DailyReportRow(
+                    transaction_type=row["transaction_type"],
+                    transaction_count=int(row["transaction_count"]),
+                    total_amount=float(row["total_amount"]),
+                )
+                for row in item["rows"]
+            ],
+            grand_count=int(item["grand_count"]),
+            grand_total=float(item["grand_total"]),
+        )
+        for item in result
+    ]
 
 
 @router.get("/daily-transactions-detail", response_model=list[TransactionDetailRow])
@@ -84,7 +120,7 @@ def daily_transactions_detail(
 @router.get("/customer-balances", response_model=list[CustomerBalanceRow])
 def customer_balances(_=Depends(require_manager_or_auditor)):
     try:
-        rows = reports_module.customer_balance_summary()
+        rows = reports_module.customer_balance_summary(emit_console_output=False)
     except MySQLError as e:
         raise db_error_to_http(e)
     if not rows:
@@ -113,7 +149,7 @@ def branch_transactions(_=Depends(require_manager_or_auditor)):
 @router.get("/branch-activity", response_model=list[BranchActivityRow])
 def branch_activity(_=Depends(require_manager_or_auditor)):
     try:
-        rows = reports_module.branch_activity_report()
+        rows = reports_module.branch_activity_report(emit_console_output=False)
     except MySQLError as e:
         raise db_error_to_http(e)
     if not rows:
