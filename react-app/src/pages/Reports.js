@@ -2,6 +2,7 @@ import { html } from '../lib/html.js';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { getPageState, setPageState } from '../lib/pageState.js';
 import { fmt } from '../lib/utils.js';
 import { Spinner } from '../components/Spinner.js';
 import Chart from 'chart.js/auto';
@@ -1184,9 +1185,15 @@ const TABS = [
   ['branch',    'Branch Activity'],
   ['employees', 'Employees'],
 ];
+const REPORTS_PAGE_STATE_KEY = 'reports';
 
 export default function Reports() {
-  const [tab, setTab] = useState('daily');
+  const cachedPageState = getPageState(REPORTS_PAGE_STATE_KEY, { tab: 'daily' });
+  const [tab, setTab] = useState(cachedPageState.tab);
+
+  useEffect(() => {
+    setPageState(REPORTS_PAGE_STATE_KEY, { tab });
+  }, [tab]);
 
   return html`
     <>

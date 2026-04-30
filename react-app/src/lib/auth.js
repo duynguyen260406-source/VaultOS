@@ -1,4 +1,7 @@
-﻿const UK = 'vaultos_user';
+import { clearDataCache } from './dataCache.js';
+import { clearAllPageState } from './pageState.js';
+
+const UK = 'vaultos_user';
 const USER_TTL_MS = 8 * 60 * 60 * 1000;
 
 function readStoredUser(raw) {
@@ -28,14 +31,16 @@ export function getUser() {
 }
 
 export function setAuth(_token, user) {
+  clearDataCache();
+  clearAllPageState();
   persistUser(user);
 }
 
 export function clearAuth() {
+  clearDataCache();
+  clearAllPageState();
   localStorage.removeItem(UK);
   sessionStorage.removeItem(UK);
 }
 
 export const isRole = (...roles) => { const u = getUser(); return u && roles.includes(u.role); };
-
-

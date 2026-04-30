@@ -1,4 +1,12 @@
-﻿import { clearAuth } from './auth.js';
+import { clearAuth } from './auth.js';
+import {
+  clearDataCache,
+  clearInflightValue,
+  getCachedValue,
+  getInflightValue,
+  setCachedValue,
+  setInflightValue,
+} from './dataCache.js';
 
 // Use localhost:8000 when running on a non-API dev server (e.g. serve.py on :3000)
 const fallbackApi = (window.location.protocol === 'file:' || window.location.port === '3000')
@@ -7,6 +15,7 @@ const fallbackApi = (window.location.protocol === 'file:' || window.location.por
 const envApi = import.meta.env.VITE_API_BASE_URL?.trim();
 const runtimeApi = window.__API_BASE_URL__?.trim();
 export const API = (envApi || runtimeApi || fallbackApi).replace(/\/+$/, '');
+const GET_CACHE_TTL_MS = 30_000;
 
 function readCookie(name) {
   return document.cookie
@@ -16,38 +25,65 @@ function readCookie(name) {
     ?.slice(name.length + 1);
 }
 
-async function req(method, path, body = null) {
-  const headers = { 'Content-Type': 'application/json' };
-  const csrf = readCookie('vaultos_csrf');
-  if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) {
-    headers['X-CSRF-Token'] = decodeURIComponent(csrf);
-  }
-  let res;
-  try {
-    res = await fetch(`${API}${path}`, {
-      method, headers,
-      credentials: 'include',
-      ...(body !== null ? { body: JSON.stringify(body) } : {}),
-    });
-  } catch {
-    throw new Error('Cannot reach the API server. Is the backend running?');
+async function req(method, path, body = null, options = {}) {
+  const verb = method.toUpperCase();
+  const cacheKey = `${verb}:${path}`;
+  const useCache = verb === 'GET' && options.cache !== 'reload';
+
+  if (useCache) {
+    const cached = getCachedValue(cacheKey, options.ttlMs ?? GET_CACHE_TTL_MS);
+    if (cached !== undefined) return cached;
+    const inflight = getInflightValue(cacheKey);
+    if (inflight) return inflight;
   }
 
-  if (res.status === 401) {
-    clearAuth();
-    window.location.hash = '/login';
-    return;
-  }
+  const run = async () => {
+    const headers = { 'Content-Type': 'application/json' };
+    const csrf = readCookie('vaultos_csrf');
+    if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes(verb)) {
+      headers['X-CSRF-Token'] = decodeURIComponent(csrf);
+    }
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const detail = data.detail;
-    const msg = Array.isArray(detail) ? detail.map(d => d.msg || d).join(', ')
-               : typeof detail === 'string' ? detail
-               : 'Request failed';
-    throw new Error(msg);
-  }
-  return data;
+    let res;
+    try {
+      res = await fetch(`${API}${path}`, {
+        method: verb,
+        headers,
+        credentials: 'include',
+        ...(body !== null ? { body: JSON.stringify(body) } : {}),
+      });
+    } catch {
+      throw new Error('Cannot reach the API server. Is the backend running?');
+    }
+
+    if (res.status === 401) {
+      clearAuth();
+      window.location.hash = '/login';
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const detail = data.detail;
+      const msg = Array.isArray(detail) ? detail.map(d => d.msg || d).join(', ')
+                 : typeof detail === 'string' ? detail
+                 : 'Request failed';
+      throw new Error(msg);
+    }
+
+    if (useCache) {
+      setCachedValue(cacheKey, data);
+    } else if (!['HEAD', 'OPTIONS'].includes(verb)) {
+      clearDataCache();
+    }
+    return data;
+  };
+
+  const promise = run().finally(() => {
+    if (useCache) clearInflightValue(cacheKey);
+  });
+  if (useCache) setInflightValue(cacheKey, promise);
+  return promise;
 }
 
 const qs = (p = {}) => {

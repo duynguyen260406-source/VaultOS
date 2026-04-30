@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../contexts/ToastContext.js';
 import { api } from '../lib/api.js';
+import { getPageState, setPageState } from '../lib/pageState.js';
 import { fmt } from '../lib/utils.js';
 import { Spinner, LoadingRow } from '../components/Spinner.js';
 import Chart from 'chart.js/auto';
@@ -840,7 +841,12 @@ function AuditTab() {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export default function Audit() {
-  const [tab, setTab] = useState('suspicious');
+  const cachedPageState = getPageState('audit', { tab: 'suspicious' });
+  const [tab, setTab] = useState(cachedPageState.tab);
+
+  useEffect(() => {
+    setPageState('audit', { tab });
+  }, [tab]);
 
   return html`
     <>

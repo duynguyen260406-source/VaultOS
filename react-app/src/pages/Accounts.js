@@ -2,18 +2,29 @@ import { html } from '../lib/html.js';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { getPageState, setPageState } from '../lib/pageState.js';
 import { fmt, debounce } from '../lib/utils.js';
 import { LoadingRow, StatusBadge } from '../components/Spinner.js';
 
 const STATUS_OPTS = ['', 'active', 'closed'];
+const PAGE_STATE_KEY = 'accounts';
 
 export default function Accounts() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [query,     setQuery]     = useState(() => searchParams.get('q') || '');
-  const [status,    setStatus]    = useState('');
-  const [accounts,  setAccounts]  = useState(null);
-  const [total,     setTotal]     = useState(0);
+  const urlQuery = searchParams.get('q') || '';
+  const cachedPageState = getPageState(PAGE_STATE_KEY, {
+    query: urlQuery,
+    status: '',
+    accounts: null,
+    total: 0,
+  });
+  const initialQuery = urlQuery || cachedPageState.query;
+  const reuseCachedResults = !urlQuery || urlQuery === cachedPageState.query;
+  const [query,     setQuery]     = useState(initialQuery);
+  const [status,    setStatus]    = useState(cachedPageState.status);
+  const [accounts,  setAccounts]  = useState(reuseCachedResults ? cachedPageState.accounts : null);
+  const [total,     setTotal]     = useState(reuseCachedResults ? cachedPageState.total : 0);
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
 
@@ -30,7 +41,13 @@ export default function Accounts() {
     finally { setLoading(false); }
   }, 350), []);
 
-  useEffect(() => { if (query) doSearch(query, status); }, []);
+  useEffect(() => {
+    setPageState(PAGE_STATE_KEY, { query, status, accounts, total });
+  }, [query, status, accounts, total]);
+
+  useEffect(() => {
+    if (accounts === null && (query || status)) doSearch(query, status);
+  }, []);
 
   const handleSearch = (val) => { setQuery(val); doSearch(val, status); };
   const handleStatus = (val) => { setStatus(val); doSearch(query, val); };

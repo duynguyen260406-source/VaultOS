@@ -2,16 +2,19 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../contexts/ToastContext.js';
 import { api } from '../lib/api.js';
+import { getPageState, setPageState } from '../lib/pageState.js';
 import { fmt } from '../lib/utils.js';
 import Modal from '../components/Modal.js';
 import { Spinner, LoadingRow, RoleBadge, StatusBadge } from '../components/Spinner.js';
 
 const TABS = [['users','App Users'],['employees','Employees'],['branches','Branches'],['account-types','Account Types']];
 const ADD_LABELS = { users:'Add User', employees:'Add Employee', branches:'Add Branch', 'account-types':'Add Type' };
+const PAGE_STATE_KEY = 'admin';
 
 export default function Admin() {
   const toast = useToast();
-  const [tab,        setTab]        = useState('users');
+  const cachedPageState = getPageState(PAGE_STATE_KEY, { tab: 'users', tabSearch: '', roleFilter: '' });
+  const [tab,        setTab]        = useState(cachedPageState.tab);
   const [data,       setData]       = useState({});
   const [loading,    setLoading]    = useState(false);
   const [modal,      setModal]      = useState(null);
@@ -19,12 +22,16 @@ export default function Admin() {
   const [saving,     setSaving]     = useState(false);
   const [form,       setForm]       = useState({});
   const [extraData,  setExtraData]  = useState({});
-  const [tabSearch,  setTabSearch]  = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
+  const [tabSearch,  setTabSearch]  = useState(cachedPageState.tabSearch);
+  const [roleFilter, setRoleFilter] = useState(cachedPageState.roleFilter);
 
   useEffect(() => {
     loadTab(tab);
   }, [tab]);
+
+  useEffect(() => {
+    setPageState(PAGE_STATE_KEY, { tab, tabSearch, roleFilter });
+  }, [tab, tabSearch, roleFilter]);
 
   async function loadTab(t) {
     setLoading(true);
@@ -368,4 +375,3 @@ export default function Admin() {
     </>
   `;
 }
-

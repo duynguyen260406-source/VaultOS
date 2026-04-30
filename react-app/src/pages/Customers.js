@@ -4,12 +4,14 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import { useToast } from '../contexts/ToastContext.js';
 import { api } from '../lib/api.js';
+import { getPageState, setPageState } from '../lib/pageState.js';
 import { debounce } from '../lib/utils.js';
 import Modal from '../components/Modal.js';
 import { Spinner, LoadingRow } from '../components/Spinner.js';
 
 const LIMIT = 50;
 const EMPTY_FORM = { first_name:'', last_name:'', date_of_birth:'', gender:'', email:'', phone:'', city:'', address:'' };
+const PAGE_STATE_KEY = 'customers';
 
 export default function Customers() {
   const { user }   = useAuth();
@@ -17,11 +19,12 @@ export default function Customers() {
   const navigate   = useNavigate();
   const [searchParams] = useSearchParams();
   const canCreate  = ['manager', 'teller'].includes(user?.role);
+  const cachedPageState = getPageState(PAGE_STATE_KEY, { search: '', rows: null, total: 0, page: 1 });
 
-  const [search,  setSearch]  = useState('');
-  const [rows,    setRows]    = useState(null);
-  const [total,   setTotal]   = useState(0);
-  const [page,    setPage]    = useState(1);
+  const [search,  setSearch]  = useState(cachedPageState.search);
+  const [rows,    setRows]    = useState(cachedPageState.rows);
+  const [total,   setTotal]   = useState(cachedPageState.total);
+  const [page,    setPage]    = useState(cachedPageState.page);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
 
@@ -45,7 +48,13 @@ export default function Customers() {
 
   const doSearch = useCallback(debounce((term) => { setPage(1); load(term, 1); }, 350), [load]);
 
-  useEffect(() => { load('', 1); }, []);
+  useEffect(() => {
+    setPageState(PAGE_STATE_KEY, { search, rows, total, page });
+  }, [search, rows, total, page]);
+
+  useEffect(() => {
+    if (rows === null) load(search, page);
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('action') === 'new' && canCreate) openCreate();
