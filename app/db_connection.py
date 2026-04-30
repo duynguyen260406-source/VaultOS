@@ -34,6 +34,7 @@ DB_HASH_PEPPER = os.environ.get("DB_HASH_PEPPER", DB_ENCRYPTION_KEY)
 DB_ENCRYPTION_KEY_VERSION = int(os.environ.get("DB_ENCRYPTION_KEY_VERSION", "1"))
 
 _pools = {}
+DB_POOL_SIZE = int(os.environ.get("DB_POOL_SIZE", "5"))
 
 
 def _build_ssl_options() -> dict:
@@ -69,7 +70,7 @@ def _get_pool(role: Optional[str] = None):
         try:
             _pools[pool_key] = MySQLConnectionPool(
                 pool_name=f"banking_pool_{pool_key}",
-                pool_size=5,
+                pool_size=DB_POOL_SIZE,
                 pool_reset_session=True,
                 **pool_config,
             )

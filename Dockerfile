@@ -28,5 +28,4 @@ COPY --from=frontend /app/react-app/dist ./react-app/dist
 
 EXPOSE 8000
 
-CMD ["python", "scripts/start_api.py", "--env", "prod", "--host", "0.0.0.0", "--port", "8000"]
-
+CMD ["sh", "-c", "python scripts/start_api.py --env prod --host 0.0.0.0 --port ${PORT:-8000}"]
