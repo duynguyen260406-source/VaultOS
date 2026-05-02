@@ -10,4 +10,5 @@ runtime
 !.env.prod.example
 react-app/node_modules
 react-app/dist
-
+react-app/dist.zip
+docs/__pycache__

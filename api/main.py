@@ -13,10 +13,8 @@ mimetypes.add_type('text/css', '.css')
 BASE_DIR = Path(__file__).resolve().parent.parent
 API_DIR = BASE_DIR / "api"
 APP_DIR = BASE_DIR / "app"
-WEB_DIR = BASE_DIR / "web"
 REACT_DIR = BASE_DIR / "react-app"
 REACT_DIST_DIR = REACT_DIR / "dist"
-SOURCE_FRONTEND_MODE = (not REACT_DIST_DIR.exists()) and REACT_DIR.exists()
 
 for path in (str(API_DIR), str(APP_DIR)):
     if path not in sys.path:
@@ -122,30 +120,17 @@ async def add_security_headers(request, call_next):
 
     csp = os.getenv("APP_CONTENT_SECURITY_POLICY")
     if not csp:
-        if SOURCE_FRONTEND_MODE and not is_prod():
-            csp = (
-                "default-src 'self'; "
-                "base-uri 'self'; "
-                "frame-ancestors 'none'; "
-                "form-action 'self'; "
-                "img-src 'self' data:; "
-                "font-src 'self' data:; "
-                "style-src 'self' 'unsafe-inline'; "
-                "script-src 'self' 'unsafe-inline' https://esm.sh; "
-                "connect-src 'self' https://esm.sh"
-            )
-        else:
-            csp = (
-                "default-src 'self'; "
-                "base-uri 'self'; "
-                "frame-ancestors 'none'; "
-                "form-action 'self'; "
-                "img-src 'self' data:; "
-                "font-src 'self' data:; "
-                "style-src 'self' 'unsafe-inline'; "
-                "script-src 'self'; "
-                "connect-src 'self'"
-            )
+        csp = (
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "frame-ancestors 'none'; "
+            "form-action 'self'; "
+            "img-src 'self' data:; "
+            "font-src 'self' data:; "
+            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; "
+            "connect-src 'self'"
+        )
     response.headers.setdefault("Content-Security-Policy", csp)
 
     if is_prod() or env_flag("APP_FORCE_HTTPS"):
@@ -223,20 +208,11 @@ def health():
     return {"status": "ok"}
 
 
-# Serve the built React SPA in production. Local development can use Vite or
-# the source-mode index that loads pinned CDN modules for quick demos.
+# Serve the built React SPA from the same origin as the API.
 if is_prod() and not REACT_DIST_DIR.exists():
     raise RuntimeError("APP_ENV=prod requires a built frontend at react-app/dist")
 
-_SERVE_DIR = (
-    REACT_DIST_DIR
-    if REACT_DIST_DIR.exists()
-    else REACT_DIR
-    if REACT_DIR.exists() and not is_prod()
-    else WEB_DIR
-    if WEB_DIR.exists()
-    else None
-)
+_SERVE_DIR = REACT_DIST_DIR if REACT_DIST_DIR.exists() else None
 
 if _SERVE_DIR:
     # Mount static assets explicitly so they're served directly
@@ -244,13 +220,9 @@ if _SERVE_DIR:
         _subdir = REACT_DIR / _sub
         if _subdir.exists():
             app.mount(f"/{_sub}", StaticFiles(directory=str(_subdir)), name=_sub)
-    if _SERVE_DIR == REACT_DIR:
-        _src_dir = REACT_DIR / "src"
-        if _src_dir.exists():
-            app.mount("/src", StaticFiles(directory=str(_src_dir)), name="src")
 
     # SPA catch-all: return index.html for all non-API paths
-    _index = _SERVE_DIR / ("index.dev.html" if _SERVE_DIR == REACT_DIR and (_SERVE_DIR / "index.dev.html").exists() else "index.html")
+    _index = _SERVE_DIR / "index.html"
 
     def _spa_response(full_path: str):
         if full_path:

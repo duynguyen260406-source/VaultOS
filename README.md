@@ -1,6 +1,6 @@
 # Banking Management System
 
-A comprehensive banking management system built with MySQL and Python, designed for managing customers, accounts, transactions, employees, and branches for a Vietnamese commercial bank.
+A banking management system built with MySQL, FastAPI, and React/Vite for managing customers, accounts, transactions, employees, and branches for a Vietnamese commercial bank.
 
 ## Features
 
@@ -17,8 +17,9 @@ A comprehensive banking management system built with MySQL and Python, designed 
 ## Tech Stack
 
 - **Database**: MySQL 8.0+
-- **Application**: Python 3.8+
-- **Libraries**: mysql-connector-python, tabulate
+- **Backend**: Python + FastAPI
+- **Frontend**: React + Vite
+- **Deployment**: Render (frontend + backend same origin), Railway (MySQL)
 - **Tools**: mysqldump, matplotlib (ER diagram)
 
 ## Project Structure
@@ -27,8 +28,8 @@ A comprehensive banking management system built with MySQL and Python, designed 
 banking-management-system/
 database/      # MySQL schema, sample data, indexes, views, procedures, functions, triggers
 api/           # FastAPI routers and Pydantic response/request models
-app/           # Shared database connection, business operations, reports, CLI
-web/           # VaultOS static web portal served by FastAPI
+app/           # Shared database connection, business operations, reports, CLI helpers
+react-app/     # React/Vite frontend (built to react-app/dist for deployment)
 scripts/       # Backup, restore, and security bootstrap scripts
 tests/         # API, database, security, and end-to-end tests
 docs/          # Report, ER tooling, design notes, and project brief
@@ -155,14 +156,31 @@ If you still want one default local profile, you can keep using `.env`.
 
 ### Start Commands
 
-Start the API and web portal from the project root with the standard launcher:
+Start the API from the project root with the standard launcher:
 
 ```bash
-# Local development
+# Local API development
 python scripts/start_api.py --env dev --reload
 
 # Production-style startup (no reload)
 python scripts/start_api.py --env prod --host 0.0.0.0 --port 8000
+```
+
+Build the frontend before same-origin production startup:
+
+```bash
+cd react-app
+npm install
+npm run build
+cd ..
+```
+
+For local frontend development, run Vite separately:
+
+```bash
+cd react-app
+npm install
+npm run dev
 ```
 
 Direct `uvicorn` still works, but the launcher avoids loading the wrong env file.
@@ -175,12 +193,11 @@ uvicorn api.main:app --reload
 
 Then open:
 
-- Web portal: `http://localhost:8000/`
-- Login page: `http://localhost:8000/login.html`
+- Frontend via Vite dev server: `http://127.0.0.1:3000/`
 - API health check: `http://localhost:8000/health`
 - API docs: `http://localhost:8000/docs`
 
-The static web portal in `web/` is served by the same FastAPI app, so browser requests use the same origin as the API.
+In deployment, the built frontend in `react-app/dist` is served by the same FastAPI app, so browser requests use the same origin as the API.
 
 ### CLI
 
@@ -249,19 +266,15 @@ These accounts live in `AppUsers` with bcrypt password hashes and should be chan
 
 ## Deployment Notes
 
+- The current recommended deployment is `Render` for the app container and `Railway` for MySQL.
+- Build the frontend into `react-app/dist` during the Render image build; the backend serves it from the same origin.
 - Start from `.env.dev.example` and `.env.prod.example` instead of reusing one shared `.env` everywhere.
-- `APP_ENV=prod` now fails fast unless `.env.prod` or `APP_ENV_FILE` exists, and production placeholders are rejected at startup.
-- Use `python scripts/start_api.py --env dev ...` for local work and `python scripts/start_api.py --env prod ...` for deployment startup.
-- Build the frontend before production startup with `cd react-app && npm install && npm run build`; production serves `react-app/dist` and no longer exposes `react-app/src`.
+- `APP_ENV=prod` fails fast unless `.env.prod` or `APP_ENV_FILE` exists, and production placeholders are rejected at startup.
 - API docs and OpenAPI are disabled by default in production. Set `APP_EXPOSE_DOCS=true` only for trusted internal deployments.
-- Use `python scripts/bootstrap_security.py --env prod` and `python scripts/apply_security_hardening.py --env prod` for production-side DB bootstrap/hardening.
+- Use `python scripts/bootstrap_security.py --env prod` and `python scripts/apply_security_hardening.py --env prod` for production-side DB bootstrap/hardening when you need DB-level RBAC users.
 - Apply database changes with `python scripts/migrate.py --env prod`; rollback SQL lives under `database/migrations/rollback/` and should be used only after a verified backup.
-- Use `.env` or machine-level environment variables for all passwords and secrets. Do not commit real credentials into `database/security.sql`.
-- `database/security.sql` is now a reference template for the hardened RBAC matrix. The recommended deploy path is `python scripts/bootstrap_security.py`, which reads `DB_AUTH_*`, `DB_MANAGER_*`, `DB_TELLER_*`, `DB_AUDITOR_*`, and `DB_BACKUP_*` from environment variables and creates the MySQL users safely at deploy time.
-- Application users now live in the `AppUsers` table. The sample passwords above are only development seed credentials; production deployments should create real users and force password rotation.
 - `DB_AUTH_USER` should be a low-privilege MySQL account used only for `AppUsers` authentication, password updates, and employee-branch lookup. Do not use `root` for normal runtime traffic.
 - If `DB_REQUIRE_TLS=true`, configure the matching `DB_SSL_*` variables for app traffic and backup/restore scripts.
-- Use `DB_BACKUP_USER` for `scripts/backup.sh`; avoid backing up with `root`.
 
 ## License
 

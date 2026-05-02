@@ -8,13 +8,11 @@ import {
   setInflightValue,
 } from './dataCache.js';
 
-// Use localhost:8000 when running on a non-API dev server (e.g. serve.py on :3000)
+// Use localhost:8000 when running the frontend dev server on :3000.
 const fallbackApi = (window.location.protocol === 'file:' || window.location.port === '3000')
   ? 'http://localhost:8000'
   : window.location.origin;
-const envApi = import.meta.env.VITE_API_BASE_URL?.trim();
-const runtimeApi = window.__API_BASE_URL__?.trim();
-export const API = (envApi || runtimeApi || fallbackApi).replace(/\/+$/, '');
+export const API = fallbackApi.replace(/\/+$/, '');
 const GET_CACHE_TTL_MS = 30_000;
 
 function readCookie(name) {
