@@ -29,6 +29,23 @@ GRANT EXECUTE ON PROCEDURE banking_system.sp_withdraw TO 'role_manager';
 GRANT EXECUTE ON PROCEDURE banking_system.sp_transfer TO 'role_manager';
 GRANT SELECT, INSERT, UPDATE ON banking_system.RuleSettings TO 'role_manager';
 GRANT EXECUTE ON FUNCTION banking_system.fn_rule_value TO 'role_manager';
+GRANT INSERT, UPDATE ON banking_system.Loans TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.LoanRepayments TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.TellerSessions TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.PendingApprovals TO 'role_manager';
+GRANT SELECT, INSERT ON banking_system.AccountStatusHistory TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.CustomerFlags TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.AuditCases TO 'role_manager';
+GRANT SELECT, INSERT, DELETE ON banking_system.AuditCaseLinks TO 'role_manager';
+GRANT SELECT, INSERT ON banking_system.AuditCaseNotes TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.RegulatoryReportTemplates TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.RegulatoryReportRuns TO 'role_manager';
+GRANT SELECT, INSERT ON banking_system.AccountBalanceSnapshots TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.SanctionsList TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.SanctionsScreeningResults TO 'role_manager';
+GRANT SELECT ON banking_system.vw_transfer_pairs TO 'role_manager';
+GRANT SELECT ON banking_system.vw_teller_productivity TO 'role_manager';
+GRANT SELECT ON banking_system.vw_branch_performance TO 'role_manager';
 
 CREATE ROLE 'role_teller';
 
@@ -44,6 +61,13 @@ GRANT EXECUTE ON PROCEDURE banking_system.sp_withdraw TO 'role_teller';
 GRANT EXECUTE ON PROCEDURE banking_system.sp_transfer TO 'role_teller';
 GRANT SELECT ON banking_system.RuleSettings TO 'role_teller';
 GRANT EXECUTE ON FUNCTION banking_system.fn_rule_value TO 'role_teller';
+GRANT SELECT, INSERT ON banking_system.Loans TO 'role_teller';
+GRANT SELECT, INSERT ON banking_system.LoanRepayments TO 'role_teller';
+GRANT SELECT, INSERT, UPDATE ON banking_system.TellerSessions TO 'role_teller';
+GRANT SELECT, INSERT ON banking_system.PendingApprovals TO 'role_teller';
+GRANT SELECT ON banking_system.AccountStatusHistory TO 'role_teller';
+GRANT SELECT ON banking_system.CustomerFlags TO 'role_teller';
+GRANT SELECT ON banking_system.AppUsers TO 'role_teller';
 
 CREATE ROLE 'role_auditor';
 
@@ -62,6 +86,23 @@ GRANT SELECT ON banking_system.vw_employee_directory_masked TO 'role_auditor';
 GRANT SELECT ON banking_system.vw_employee_details_masked TO 'role_auditor';
 GRANT SELECT ON banking_system.RuleSettings TO 'role_auditor';
 GRANT EXECUTE ON FUNCTION banking_system.fn_rule_value TO 'role_auditor';
+GRANT SELECT ON banking_system.Customers TO 'role_auditor';
+GRANT SELECT ON banking_system.Loans TO 'role_auditor';
+GRANT SELECT ON banking_system.AppUsers TO 'role_auditor';
+GRANT SELECT ON banking_system.LoanRepayments TO 'role_auditor';
+GRANT SELECT ON banking_system.TellerSessions TO 'role_auditor';
+GRANT SELECT ON banking_system.PendingApprovals TO 'role_auditor';
+GRANT SELECT ON banking_system.AccountStatusHistory TO 'role_auditor';
+GRANT SELECT, INSERT, UPDATE ON banking_system.CustomerFlags TO 'role_auditor';
+GRANT SELECT, INSERT, UPDATE ON banking_system.AuditCases TO 'role_auditor';
+GRANT SELECT, INSERT, DELETE ON banking_system.AuditCaseLinks TO 'role_auditor';
+GRANT SELECT, INSERT ON banking_system.AuditCaseNotes TO 'role_auditor';
+GRANT SELECT ON banking_system.RegulatoryReportTemplates TO 'role_auditor';
+GRANT SELECT, INSERT, UPDATE ON banking_system.RegulatoryReportRuns TO 'role_auditor';
+GRANT SELECT ON banking_system.AccountBalanceSnapshots TO 'role_auditor';
+GRANT SELECT, INSERT, UPDATE ON banking_system.SanctionsList TO 'role_auditor';
+GRANT SELECT, UPDATE ON banking_system.SanctionsScreeningResults TO 'role_auditor';
+GRANT SELECT ON banking_system.vw_transfer_pairs TO 'role_auditor';
 
 CREATE ROLE 'role_backup';
 
