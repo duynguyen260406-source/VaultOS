@@ -37,8 +37,8 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
       if (existing) return { ...existing, ...n };
       const angle = (i / nodes.length) * 2 * Math.PI;
       const r = n.is_root ? 18 : 12;
-      // Start non-root nodes close to center — repulsion spreads them smoothly
-      const spread = n.is_root ? 0 : 20 + Math.random() * 20;
+      // Start at evenly-spaced ring so repulsion doesn't collide
+      const spread = n.is_root ? 0 : 80 + Math.random() * 30;
       return {
         ...n,
         r,
@@ -56,12 +56,14 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const REPULSION   = 5500;
-    const SPRING_LEN  = 120;
-    const SPRING_K    = 0.018;
-    const DAMPING     = 0.97;   // high = very smooth, slow to settle
-    const CENTER_F    = 0.001;
-    const THERMAL     = 0.003;  // barely perceptible ambient drift
+    const REPULSION       = 5500;
+    const SPRING_LEN      = 130;
+    const SPRING_K        = 0.014;
+    const DAMPING         = 0.978;  // water-resistance feel
+    const CENTER_F        = 0.0008;
+    const THERMAL         = 0.002;  // barely perceptible drift
+    const MAX_FORCE       = 6;      // cap per-pair repulsion so close nodes don't explode
+    const MAX_VELOCITY    = 2.2;    // pixels/frame ceiling
 
     function tick() {
       const sim = simRef.current;
@@ -77,13 +79,13 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
       // Reset forces
       ns.forEach(n => { n.fx = 0; n.fy = 0; });
 
-      // Repulsion
+      // Repulsion — capped so nodes that start close don't explode
       for (let i = 0; i < ns.length; i++) {
         for (let j = i + 1; j < ns.length; j++) {
           const dx = ns[j].x - ns[i].x;
           const dy = ns[j].y - ns[i].y;
           const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-          const f  = REPULSION / (dist * dist);
+          const f  = Math.min(REPULSION / (dist * dist), MAX_FORCE);
           const fx = (dx / dist) * f, fy = (dy / dist) * f;
           ns[i].fx -= fx; ns[i].fy -= fy;
           ns[j].fx += fx; ns[j].fy += fy;
@@ -103,16 +105,19 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
         b.fx -= fx; b.fy -= fy;
       });
 
-      // Integrate
+      // Integrate — velocity capped so no frame ever moves a node more than MAX_VELOCITY px
       ns.forEach(n => {
-        if (sim.drag?.id === n.id) return; // dragged node: don't apply forces
+        if (sim.drag?.id === n.id) return;
         n.fx += (cx - n.x) * CENTER_F;
         n.fy += (cy - n.y) * CENTER_F;
-        // thermal noise keeps nodes alive
         n.fx += (Math.random() - 0.5) * THERMAL;
         n.fy += (Math.random() - 0.5) * THERMAL;
-        n.vx = (n.vx + n.fx) * DAMPING;
-        n.vy = (n.vy + n.fy) * DAMPING;
+        let vx = (n.vx + n.fx) * DAMPING;
+        let vy = (n.vy + n.fy) * DAMPING;
+        // hard velocity ceiling
+        const speed = Math.sqrt(vx * vx + vy * vy);
+        if (speed > MAX_VELOCITY) { vx = (vx / speed) * MAX_VELOCITY; vy = (vy / speed) * MAX_VELOCITY; }
+        n.vx = vx; n.vy = vy;
         n.x = Math.max(n.r + 4, Math.min(W - n.r - 4, n.x + n.vx));
         n.y = Math.max(n.r + 4, Math.min(H - n.r - 4, n.y + n.vy));
       });
@@ -121,10 +126,19 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
       ctx.clearRect(0, 0, W, H);
 
       // Subtle grid
-      ctx.strokeStyle = 'rgba(148,163,184,.04)';
+      ctx.strokeStyle = 'rgba(148,163,184,.03)';
       ctx.lineWidth = 0.5;
-      for (let x = 0; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-      for (let y = 0; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      for (let x = 0; x < W; x += 70) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 0; y < H; y += 70) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+      // Vignette for depth
+      const vig = ctx.createRadialGradient(cx, cy, W * 0.25, cx, cy, W * 0.75);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,0.35)');
+      ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+
+      // Advance pulse phase for root node animation
+      sim.pulse = ((sim.pulse || 0) + 0.022) % (Math.PI * 2);
 
       const selId = selectedRef.current;
 
@@ -162,39 +176,49 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
         const isSel  = n.id === selId;
         const isHov  = n.id === sim.hovered;
         const isRoot = n.is_root;
-        const r = n.r + (isSel || isHov ? 3 : 0);
+        const r = n.r + (isSel || isHov ? 2 : 0);
 
         // Outer glow
-        if (isRoot || isSel) {
-          const gr = ctx.createRadialGradient(n.x, n.y, r * .4, n.x, n.y, r * 2.8);
-          const gc = isSel ? '251,191,36' : '59,130,246';
-          gr.addColorStop(0, `rgba(${gc},.22)`);
+        if (isRoot || isSel || isHov) {
+          const gr = ctx.createRadialGradient(n.x, n.y, r * .3, n.x, n.y, r * 2.6);
+          const gc = isSel ? '251,191,36' : isRoot ? '59,130,246' : '100,116,139';
+          gr.addColorStop(0, `rgba(${gc},.18)`);
           gr.addColorStop(1, `rgba(${gc},0)`);
-          ctx.beginPath(); ctx.arc(n.x, n.y, r * 2.8, 0, Math.PI * 2);
+          ctx.beginPath(); ctx.arc(n.x, n.y, r * 2.6, 0, Math.PI * 2);
           ctx.fillStyle = gr; ctx.fill();
+        }
+
+        // Slow pulse ring on root node
+        if (isRoot) {
+          const pAlpha = 0.12 + 0.08 * Math.sin(sim.pulse);
+          const pR = r + 4 + 3 * Math.sin(sim.pulse);
+          ctx.beginPath(); ctx.arc(n.x, n.y, pR, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(96,165,250,${pAlpha})`;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
         }
 
         // Node circle
         ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle   = isSel ? '#78350f' : isRoot ? '#1d4ed8' : '#0f172a';
+        ctx.fillStyle   = isSel ? '#7c2d12' : isRoot ? '#1e40af' : '#0f172a';
         ctx.fill();
         ctx.strokeStyle = isSel ? '#fbbf24' : isRoot ? '#60a5fa' : isHov ? '#475569' : '#1e3a5f';
-        ctx.lineWidth   = isSel ? 2 : isRoot ? 1.5 : 1;
+        ctx.lineWidth   = isSel ? 1.8 : isRoot ? 1.5 : 1;
         ctx.stroke();
 
         // ID label
-        ctx.fillStyle = isSel ? '#fef3c7' : isRoot ? '#e0f2fe' : '#94a3b8';
-        ctx.font = `${isRoot ? 600 : 500} ${isRoot ? 9 : 8}px monospace`;
+        ctx.fillStyle = isSel ? '#fef3c7' : isRoot ? '#bfdbfe' : '#64748b';
+        ctx.font = `${isRoot ? 600 : 500} ${isRoot ? 9 : 8}px ui-monospace,monospace`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(`#${n.id}`, n.x, n.y + 0.5);
 
-        // Name label under node
+        // Name label under node — only for root, selected, or hovered
         if (isRoot || isSel || isHov) {
           const lbl = (n.label || '').split(' ').slice(0, 2).join(' ') || `#${n.id}`;
           ctx.font = `${isSel ? 600 : 400} 10px ui-monospace,monospace`;
-          ctx.fillStyle = isSel ? '#fde68a' : isRoot ? '#93c5fd' : '#64748b';
+          ctx.fillStyle = isSel ? '#fde68a' : isRoot ? '#93c5fd' : '#475569';
           ctx.textBaseline = 'top';
-          ctx.fillText(lbl, n.x, n.y + r + 5);
+          ctx.fillText(lbl, n.x, n.y + r + 4);
         }
       });
 
