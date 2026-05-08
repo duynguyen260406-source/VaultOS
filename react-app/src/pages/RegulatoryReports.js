@@ -86,7 +86,7 @@ export default function RegulatoryReports() {
   return html`
     <>
       <style>${`
-        .reg-tpl-btn { transition: background .12s, border-color .12s; }
+        .reg-tpl-btn { transition: background .12s, border-left-color .12s; user-select: none; }
         .reg-tpl-btn:hover { background: rgba(255,255,255,.04) !important; }
       `}</style>
 
@@ -105,24 +105,24 @@ export default function RegulatoryReports() {
             ${initLoading
               ? html`<div style="padding:20px;text-align:center;"><${Spinner} /></div>`
               : templates.map(t => html`
-                <button key=${t.code}
+                <div key=${t.code}
                   className="reg-tpl-btn"
                   onClick=${() => { setSelected(t.code); setPreview(null); }}
                   style=${{
-                    display: 'block', width: '100%', textAlign: 'left',
                     padding: '10px 14px',
-                    borderLeft: `3px solid ${selected === t.code ? 'var(--blue-90)' : 'transparent'}`,
+                    borderTop: 'none', borderRight: 'none',
+                    borderBottom: '1px solid var(--border)',
+                    borderLeft: `3px solid ${selected === t.code ? '#60a5fa' : 'transparent'}`,
                     background: selected === t.code ? 'rgba(96,165,250,.08)' : 'transparent',
-                    border: 'none', borderBottom: '1px solid var(--border)',
                     cursor: 'pointer',
                   }}>
-                  <div style=${{ fontSize: 12, fontWeight: 600, color: selected === t.code ? 'var(--blue-90)' : 'var(--foreground)', marginBottom: 2 }}>
+                  <div style=${{ fontSize: 12, fontWeight: 600, color: selected === t.code ? '#60a5fa' : '#f1f5f9', marginBottom: 2 }}>
                     ${t.name}
                   </div>
-                  <div style=${{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>
+                  <div style=${{ fontSize: 11, color: '#64748b', lineHeight: 1.4 }}>
                     ${TEMPLATE_DESC[t.code] || t.description || ''}
                   </div>
-                </button>
+                </div>
               `)
             }
           </div>

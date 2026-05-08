@@ -39,7 +39,7 @@ GRANT SELECT, INSERT, UPDATE ON banking_system.AuditCases TO 'role_manager';
 GRANT SELECT, INSERT, DELETE ON banking_system.AuditCaseLinks TO 'role_manager';
 GRANT SELECT, INSERT ON banking_system.AuditCaseNotes TO 'role_manager';
 GRANT SELECT, INSERT, UPDATE ON banking_system.RegulatoryReportTemplates TO 'role_manager';
-GRANT SELECT, INSERT, UPDATE ON banking_system.RegulatoryReportRuns TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE, DELETE ON banking_system.RegulatoryReportRuns TO 'role_manager';
 GRANT SELECT, INSERT ON banking_system.AccountBalanceSnapshots TO 'role_manager';
 GRANT SELECT, INSERT, UPDATE ON banking_system.SanctionsList TO 'role_manager';
 GRANT SELECT, INSERT, UPDATE ON banking_system.SanctionsScreeningResults TO 'role_manager';
