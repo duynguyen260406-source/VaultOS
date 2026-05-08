@@ -200,14 +200,14 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
 
         // Node circle
         ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle   = isSel ? '#7c2d12' : isRoot ? '#1e40af' : '#0f172a';
+        ctx.fillStyle   = isSel ? '#7c2d12' : isRoot ? '#1e40af' : '#141414';
         ctx.fill();
-        ctx.strokeStyle = isSel ? '#fbbf24' : isRoot ? '#60a5fa' : isHov ? '#475569' : '#1e3a5f';
+        ctx.strokeStyle = isSel ? '#fbbf24' : isRoot ? '#60a5fa' : isHov ? '#555555' : '#2e2e2e';
         ctx.lineWidth   = isSel ? 1.8 : isRoot ? 1.5 : 1;
         ctx.stroke();
 
         // ID label
-        ctx.fillStyle = isSel ? '#fef3c7' : isRoot ? '#bfdbfe' : '#64748b';
+        ctx.fillStyle = isSel ? '#fef3c7' : isRoot ? '#bfdbfe' : '#666666';
         ctx.font = `${isRoot ? 600 : 500} ${isRoot ? 9 : 8}px ui-monospace,monospace`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(`#${n.id}`, n.x, n.y + 0.5);
@@ -216,7 +216,7 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
         if (isRoot || isSel || isHov) {
           const lbl = (n.label || '').split(' ').slice(0, 2).join(' ') || `#${n.id}`;
           ctx.font = `${isSel ? 600 : 400} 10px ui-monospace,monospace`;
-          ctx.fillStyle = isSel ? '#fde68a' : isRoot ? '#93c5fd' : '#475569';
+          ctx.fillStyle = isSel ? '#fde68a' : isRoot ? '#93c5fd' : '#888888';
           ctx.textBaseline = 'top';
           ctx.fillText(lbl, n.x, n.y + r + 4);
         }
@@ -334,37 +334,33 @@ function NodeInfo({ node, edges, onClose }) {
   const txnCount = [...outgoing, ...incoming].reduce((s, e) => s + e.count, 0);
 
   const Row = ({ label, value, accent }) => html`
-    <div style=${{ display:'flex', justifyContent:'space-between', alignItems:'baseline', padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,.05)' }}>
-      <span style=${{ fontSize:11, color:'#64748b', textTransform:'uppercase', letterSpacing:'.06em' }}>${label}</span>
-      <span style=${{ fontSize:12, fontWeight:600, color: accent || '#f1f5f9', fontVariantNumeric:'tabular-nums' }}>${value}</span>
+    <div style=${{ display:'flex', justifyContent:'space-between', alignItems:'baseline', padding:'6px 0', borderBottom:'1px solid var(--border)' }}>
+      <span style=${{ fontSize:11, color:'var(--muted-foreground)', textTransform:'uppercase', letterSpacing:'.06em' }}>${label}</span>
+      <span style=${{ fontSize:12, fontWeight:600, color: accent || 'var(--foreground)', fontVariantNumeric:'tabular-nums' }}>${value}</span>
     </div>
   `;
 
   return html`
-    <div style=${{
-      background:'#0c1625', border:'1px solid #1e3a5f',
-      borderRadius:10, overflow:'hidden',
-      boxShadow:'0 8px 32px rgba(0,0,0,.6)',
-    }}>
+    <div className="card" style=${{ padding:0, overflow:'hidden', borderRadius:10 }}>
       <!-- Header -->
-      <div style=${{ padding:'12px 14px', borderBottom:'1px solid #1e3a5f', display:'flex', alignItems:'center', justifyContent:'space-between', background: node.is_root ? 'rgba(29,78,216,.2)' : 'rgba(248,191,36,.08)' }}>
+      <div style=${{ padding:'12px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', background: node.is_root ? 'rgba(30,64,175,.15)' : 'rgba(251,191,36,.06)' }}>
         <div style=${{ display:'flex', alignItems:'center', gap:8 }}>
           <div style=${{
             width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
-            background: node.is_root ? '#1d4ed8' : '#78350f',
+            background: node.is_root ? '#1e40af' : '#78350f',
             border: `1.5px solid ${node.is_root ? '#60a5fa' : '#fbbf24'}`,
-            fontSize:9, fontWeight:700, color: node.is_root ? '#e0f2fe' : '#fef3c7',
+            fontSize:9, fontWeight:700, color: node.is_root ? '#bfdbfe' : '#fef3c7',
             fontFamily:'monospace', flexShrink:0,
           }}>#${node.id}</div>
           <div>
-            <div style=${{ fontSize:13, fontWeight:600, color:'#f1f5f9', lineHeight:1.2 }}>
+            <div style=${{ fontSize:13, fontWeight:600, color:'var(--foreground)', lineHeight:1.2 }}>
               ${node.label || `Customer #${node.id}`}
             </div>
             ${node.is_root && html`<div style=${{ fontSize:10, color:'#60a5fa', marginTop:1 }}>Root node</div>`}
           </div>
         </div>
         <button onClick=${onClose}
-          style=${{ background:'none', border:'none', cursor:'pointer', color:'#475569', padding:4, lineHeight:1 }}>
+          style=${{ background:'none', border:'none', cursor:'pointer', color:'var(--muted-foreground)', padding:4, lineHeight:1 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
@@ -384,8 +380,8 @@ function NodeInfo({ node, edges, onClose }) {
 
       <!-- Connected nodes -->
       ${(outgoing.length > 0 || incoming.length > 0) && html`
-        <div style=${{ borderTop:'1px solid #1e3a5f', padding:'10px 14px 12px' }}>
-          <div style=${{ fontSize:10, color:'#475569', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:8 }}>Connections</div>
+        <div style=${{ borderTop:'1px solid var(--border)', padding:'10px 14px 12px' }}>
+          <div style=${{ fontSize:10, color:'var(--muted-foreground)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:8 }}>Connections</div>
           ${[...outgoing.map(e => ({ ...e, dir:'out', peer: e.to })),
              ...incoming.map(e => ({ ...e, dir:'in',  peer: e.from }))]
             .sort((a, b) => b.amount - a.amount)
@@ -395,8 +391,8 @@ function NodeInfo({ node, edges, onClose }) {
                 <span style=${{ fontSize:11, color: e.dir === 'out' ? '#f87171' : '#4ade80' }}>
                   ${e.dir === 'out' ? '→' : '←'}
                 </span>
-                <span style=${{ fontFamily:'monospace', fontSize:11, color:'#94a3b8' }}>#${e.peer}</span>
-                <span style=${{ fontSize:10, color:'#334155', marginLeft:'auto', fontVariantNumeric:'tabular-nums' }}>
+                <span style=${{ fontFamily:'monospace', fontSize:11, color:'var(--muted-foreground)' }}>#${e.peer}</span>
+                <span style=${{ fontSize:10, color:'var(--muted-foreground)', opacity:.65, marginLeft:'auto', fontVariantNumeric:'tabular-nums' }}>
                   ${fmt.currency(e.amount)}
                 </span>
               </div>
@@ -425,16 +421,16 @@ function GraphSummary({ graph }) {
     : '—';
 
   const Stat = ({ label, value, sub }) => html`
-    <div style=${{ padding:'10px 12px', borderBottom:'1px solid rgba(255,255,255,.04)' }}>
-      <div style=${{ fontSize:10, color:'#475569', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:3 }}>${label}</div>
-      <div style=${{ fontSize:13, fontWeight:600, color:'#f1f5f9', fontVariantNumeric:'tabular-nums' }}>${value}</div>
-      ${sub && html`<div style=${{ fontSize:10, color:'#334155', marginTop:1 }}>${sub}</div>`}
+    <div style=${{ padding:'10px 12px', borderBottom:'1px solid var(--border)' }}>
+      <div style=${{ fontSize:10, color:'var(--muted-foreground)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:3 }}>${label}</div>
+      <div style=${{ fontSize:13, fontWeight:600, color:'var(--foreground)', fontVariantNumeric:'tabular-nums' }}>${value}</div>
+      ${sub && html`<div style=${{ fontSize:10, color:'var(--muted-foreground)', opacity:.6, marginTop:1 }}>${sub}</div>`}
     </div>
   `;
 
   return html`
-    <div style=${{ background:'#0c1625', border:'1px solid #1e3a5f', borderRadius:10, overflow:'hidden' }}>
-      <div style=${{ padding:'10px 12px', borderBottom:'1px solid #1e3a5f', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.09em', color:'#334155' }}>
+    <div className="card" style=${{ padding:0, overflow:'hidden', borderRadius:10 }}>
+      <div style=${{ padding:'10px 12px', borderBottom:'1px solid var(--border)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.09em', color:'var(--muted-foreground)' }}>
         Network Summary
       </div>
       <div style=${{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:0 }}>
@@ -485,7 +481,7 @@ export default function CustomerNetwork() {
   return html`
     <>
       <style>${`
-        .net-canvas-wrap { background: #080d14; }
+        .net-canvas-wrap { background: var(--background); }
       `}</style>
 
       <header className="topbar">
@@ -523,31 +519,31 @@ export default function CustomerNetwork() {
 
         <!-- Canvas area -->
         <div className="net-canvas-wrap"
-          style="flex:1;border-radius:10px;border:1px solid #1e3a5f;overflow:hidden;position:relative;min-height:400px;">
+          style="flex:1;border-radius:10px;border:1px solid var(--border);overflow:hidden;position:relative;min-height:400px;">
 
           ${loading && html`
-            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,13,20,.7);z-index:10;border-radius:inherit;">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,10,10,.7);z-index:10;border-radius:inherit;">
               <${Spinner} size=${32} />
             </div>
           `}
 
           ${!graph && !loading && html`
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" strokeWidth="1">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="1">
                 <circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/>
                 <circle cx="12" cy="12" r="2"/>
                 <line x1="7" y1="11" x2="10" y2="12"/><line x1="14" y1="12" x2="17" y2="6"/>
                 <line x1="14" y1="12" x2="17" y2="18"/>
               </svg>
-              <div style="font-size:13px;font-weight:500;color:#334155;">Enter a customer ID to visualize transfer connections</div>
-              <div style="font-size:11px;color:#1e3a5f;">Click and drag nodes · Click to inspect · Nodes animate continuously</div>
+              <div style="font-size:13px;font-weight:500;color:var(--muted-foreground);">Enter a customer ID to visualize transfer connections</div>
+              <div style="font-size:11px;color:var(--border);">Click and drag nodes · Click to inspect · Nodes animate continuously</div>
             </div>
           `}
 
           ${graph && graph.nodes.length === 0 && html`
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:none;">
-              <div style="font-size:13px;color:#334155;">No transfer connections for customer #${graph.customer_id}</div>
-              <div style="font-size:11px;color:#1e3a5f;">Try removing the date filter or increasing depth</div>
+              <div style="font-size:13px;color:var(--muted-foreground);">No transfer connections for customer #${graph.customer_id}</div>
+              <div style="font-size:11px;color:var(--border);">Try removing the date filter or increasing depth</div>
             </div>
           `}
 
@@ -564,16 +560,16 @@ export default function CustomerNetwork() {
           ${graph && graph.nodes.length > 0 && html`
             <div style="position:absolute;bottom:12px;left:12px;display:flex;gap:12px;pointer-events:none;">
               <div style="display:flex;align-items:center;gap:5px;">
-                <div style="width:10px;height:10px;border-radius:50%;background:#1d4ed8;border:1.5px solid #60a5fa;"></div>
-                <span style="font-size:10px;color:#475569;">Root node</span>
+                <div style="width:10px;height:10px;border-radius:50%;background:#1e40af;border:1.5px solid #60a5fa;"></div>
+                <span style="font-size:10px;color:var(--muted-foreground);">Root node</span>
               </div>
               <div style="display:flex;align-items:center;gap:5px;">
-                <div style="width:10px;height:10px;border-radius:50%;background:#0f172a;border:1px solid #1e3a5f;"></div>
-                <span style="font-size:10px;color:#475569;">Connected customer</span>
+                <div style="width:10px;height:10px;border-radius:50%;background:#141414;border:1px solid #333;"></div>
+                <span style="font-size:10px;color:var(--muted-foreground);">Connected customer</span>
               </div>
               <div style="display:flex;align-items:center;gap:5px;">
                 <div style="width:16px;height:1.5px;background:rgba(96,165,250,.5);"></div>
-                <span style="font-size:10px;color:#475569;">Transfer (thicker = larger amount)</span>
+                <span style="font-size:10px;color:var(--muted-foreground);">Transfer (thicker = larger amount)</span>
               </div>
             </div>
           `}
@@ -589,8 +585,8 @@ export default function CustomerNetwork() {
               onClose=${() => setSelectedNode(null)}
             />
             ${!selectedNode && html`
-              <div style="border:1px dashed #1e3a5f;border-radius:10px;padding:20px 14px;text-align:center;">
-                <div style="font-size:11px;color:#334155;line-height:1.6;">
+              <div style="border:1px dashed var(--border);border-radius:10px;padding:20px 14px;text-align:center;">
+                <div style="font-size:11px;color:var(--muted-foreground);line-height:1.6;opacity:.6;">
                   Click any node<br/>to inspect it
                 </div>
               </div>
