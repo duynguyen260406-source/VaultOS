@@ -46,7 +46,11 @@ class ReviewRequest(BaseModel):
 def _screen_customer(cursor, customer_id: int) -> list[dict]:
     cursor.execute(
         """
-        SELECT c.FirstName, c.LastName, c.DateOfBirth, c.NationalID
+        SELECT
+            CONVERT(AES_DECRYPT(c.FirstName, @encryption_key) USING utf8mb4) AS FirstName,
+            CONVERT(AES_DECRYPT(c.LastName,  @encryption_key) USING utf8mb4) AS LastName,
+            c.DateOfBirth,
+            c.IdentityHash
         FROM Customers c WHERE c.CustomerID = %s
         """,
         (customer_id,),
@@ -55,9 +59,10 @@ def _screen_customer(cursor, customer_id: int) -> list[dict]:
     if not cust:
         return []
 
-    full_name = f"{cust['FirstName']} {cust['LastName']}"
+    full_name = f"{cust['FirstName'] or ''} {cust['LastName'] or ''}".strip()
     norm = normalize_name(full_name)
     dob = str(cust["DateOfBirth"]) if cust["DateOfBirth"] else None
+    id_hash = cust["IdentityHash"]
 
     results = []
 
@@ -79,8 +84,8 @@ def _screen_customer(cursor, customer_id: int) -> list[dict]:
             score += 30
             reason_parts.append("dob_match")
 
-        if cust.get("NationalID") and entry["IdentityNumberHash"]:
-            if hash_identity(str(cust["NationalID"])) == entry["IdentityNumberHash"]:
+        if id_hash and entry["IdentityNumberHash"]:
+            if id_hash == entry["IdentityNumberHash"]:
                 score = 100
                 reason_parts.append("id_hash_match")
 
