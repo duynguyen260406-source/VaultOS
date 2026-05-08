@@ -58,10 +58,10 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
 
     const REPULSION   = 5500;
     const SPRING_LEN  = 120;
-    const SPRING_K    = 0.03;
-    const DAMPING     = 0.95;   // higher = settles faster
-    const CENTER_F    = 0.002;
-    const THERMAL     = 0.012;  // very subtle drift
+    const SPRING_K    = 0.018;
+    const DAMPING     = 0.97;   // high = very smooth, slow to settle
+    const CENTER_F    = 0.001;
+    const THERMAL     = 0.003;  // barely perceptible ambient drift
 
     function tick() {
       const sim = simRef.current;
