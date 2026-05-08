@@ -37,13 +37,15 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
       if (existing) return { ...existing, ...n };
       const angle = (i / nodes.length) * 2 * Math.PI;
       const r = n.is_root ? 18 : 12;
+      // Start non-root nodes close to center — repulsion spreads them smoothly
+      const spread = n.is_root ? 0 : 20 + Math.random() * 20;
       return {
         ...n,
         r,
-        x:  n.is_root ? cx : cx + Math.cos(angle) * (130 + Math.random() * 60),
-        y:  n.is_root ? cy : cy + Math.sin(angle) * (130 + Math.random() * 60),
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: (Math.random() - 0.5) * 1.5,
+        x:  cx + Math.cos(angle) * spread,
+        y:  cy + Math.sin(angle) * spread,
+        vx: 0,
+        vy: 0,
       };
     });
   }, [nodes, edges]);
@@ -54,12 +56,12 @@ function PhysicsGraph({ nodes, edges, onNodeSelect, selectedId }) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const REPULSION   = 7000;
-    const SPRING_LEN  = 110;
-    const SPRING_K    = 0.04;
-    const DAMPING     = 0.92;
-    const CENTER_F    = 0.003;
-    const THERMAL     = 0.06;   // keeps nodes gently drifting
+    const REPULSION   = 5500;
+    const SPRING_LEN  = 120;
+    const SPRING_K    = 0.03;
+    const DAMPING     = 0.95;   // higher = settles faster
+    const CENTER_F    = 0.002;
+    const THERMAL     = 0.012;  // very subtle drift
 
     function tick() {
       const sim = simRef.current;
