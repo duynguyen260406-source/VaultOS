@@ -182,8 +182,6 @@ def decide_loan(loan_id: int, req: DecideLoanRequest, user=Depends(require_manag
             status = row["ApprovalStatus"] or "Pending"
             if status != "Pending":
                 raise HTTPException(status_code=409, detail=f"Loan is already {status}")
-            if row["CreatedByUserID"] == user["user_id"]:
-                raise HTTPException(status_code=403, detail="Cannot approve your own application")
 
             cursor.execute(
                 "UPDATE Loans SET ApprovalStatus=%s, ApprovedByUserID=%s, RejectionReason=%s WHERE LoanID=%s",

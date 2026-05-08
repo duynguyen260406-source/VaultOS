@@ -210,8 +210,6 @@ def decide_approval(approval_id: int, req: DecideRequest, user=Depends(require_m
                 raise HTTPException(status_code=404, detail="Approval not found")
             if row["Status"] != "pending":
                 raise HTTPException(status_code=409, detail=f"Approval is already {row['Status']}")
-            if row["RequestedByUserID"] == user["user_id"]:
-                raise HTTPException(status_code=403, detail="Cannot approve your own request")
 
             cursor.execute(
                 "UPDATE PendingApprovals SET Status=%s, ReviewedByUserID=%s, ReviewedAt=NOW(), ReviewNotes=%s "
