@@ -11,7 +11,7 @@ SELECT
     tout.Amount         AS amount,
     DATE(tout.TransactionDate) AS txn_date
 FROM Transactions tout
-JOIN Transactions tin  ON tout.ReferenceID = tin.ReferenceID
+JOIN Transactions tin  ON tin.ReferenceID = tout.TransactionID
                        AND tout.TransactionType = 'Transfer_Out'
                        AND tin.TransactionType  = 'Transfer_In'
 JOIN Accounts aout ON tout.AccountID = aout.AccountID

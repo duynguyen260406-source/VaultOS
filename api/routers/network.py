@@ -48,7 +48,7 @@ def customer_network(
                     SUM(tout.Amount)  AS total_amount,
                     COUNT(*)          AS txn_count
                 FROM Transactions tout
-                JOIN Transactions tin  ON tout.ReferenceID = tin.ReferenceID
+                JOIN Transactions tin  ON tin.ReferenceID = tout.TransactionID
                                       AND tout.TransactionType = 'Transfer_Out'
                                       AND tin.TransactionType  = 'Transfer_In'
                 JOIN Accounts aout ON tout.AccountID = aout.AccountID
@@ -103,7 +103,7 @@ def customer_network(
                             SUM(tout.Amount) AS total_amount,
                             COUNT(*) AS txn_count
                         FROM Transactions tout
-                        JOIN Transactions tin  ON tout.ReferenceID = tin.ReferenceID
+                        JOIN Transactions tin  ON tin.ReferenceID = tout.TransactionID
                                               AND tout.TransactionType = 'Transfer_Out'
                                               AND tin.TransactionType  = 'Transfer_In'
                         JOIN Accounts aout ON tout.AccountID = aout.AccountID
