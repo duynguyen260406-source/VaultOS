@@ -87,6 +87,19 @@ CREATE TABLE IF NOT EXISTS AppRuntimeSecrets (
     UpdatedAt        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS RuleSettings (
+    RuleID          INT             AUTO_INCREMENT PRIMARY KEY,
+    Code            VARCHAR(80)     NOT NULL UNIQUE,
+    Value           JSON            NOT NULL,
+    Description     VARCHAR(255)    NOT NULL DEFAULT '',
+    UpdatedByUserID INT             NULL,
+    UpdatedAt       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    Active          BOOLEAN         NOT NULL DEFAULT TRUE,
+    INDEX idx_rules_active_code (Active, Code),
+    CONSTRAINT fk_rules_updated_by FOREIGN KEY (UpdatedByUserID)
+        REFERENCES AppUsers(UserID) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS AccountTypes (
     AccountTypeID   INT             AUTO_INCREMENT PRIMARY KEY,
     TypeName        VARCHAR(30)     NOT NULL,

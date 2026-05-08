@@ -14,6 +14,15 @@ import Transactions from './pages/Transactions.js';
 import Reports from './pages/Reports.js';
 import Audit from './pages/Audit.js';
 import Admin from './pages/Admin.js';
+import Approvals from './pages/Approvals.js';
+import EndOfDay from './pages/EndOfDay.js';
+import Loans from './pages/Loans.js';
+import CustomerWatchlist from './pages/CustomerWatchlist.js';
+import AuditCases from './pages/AuditCases.js';
+import Performance from './pages/Performance.js';
+import RegulatoryReports from './pages/RegulatoryReports.js';
+import Sanctions from './pages/Sanctions.js';
+import CustomerNetwork from './pages/CustomerNetwork.js';
 import Profile from './pages/Profile.js';
 import Page403 from './pages/Page403.js';
 
@@ -51,6 +60,43 @@ function AppRoutes() {
           <${Route} path="/audit" element=${html`
             <${ProtectedRoute} roles=${['manager','auditor']}>
               <${Audit} />
+            <//>
+          `} />
+          <${Route} path="/cases" element=${html`
+            <${ProtectedRoute} roles=${['manager','auditor']}>
+              <${AuditCases} />
+            <//>
+          `} />
+          <${Route} path="/performance" element=${html`
+            <${ProtectedRoute} roles=${['manager']}>
+              <${Performance} />
+            <//>
+          `} />
+          <${Route} path="/regulatory" element=${html`
+            <${ProtectedRoute} roles=${['manager','auditor']}>
+              <${RegulatoryReports} />
+            <//>
+          `} />
+          <${Route} path="/sanctions" element=${html`
+            <${ProtectedRoute} roles=${['manager','auditor']}>
+              <${Sanctions} />
+            <//>
+          `} />
+          <${Route} path="/network" element=${html`
+            <${ProtectedRoute} roles=${['manager','auditor']}>
+              <${CustomerNetwork} />
+            <//>
+          `} />
+          <${Route} path="/approvals" element=${html`<${Approvals} />`} />
+          <${Route} path="/loans" element=${html`<${Loans} />`} />
+          <${Route} path="/watchlist" element=${html`
+            <${ProtectedRoute} roles=${['manager','auditor']}>
+              <${CustomerWatchlist} />
+            <//>
+          `} />
+          <${Route} path="/eod" element=${html`
+            <${ProtectedRoute} roles=${['manager','teller']}>
+              <${EndOfDay} />
             <//>
           `} />
           <${Route} path="/admin" element=${html`

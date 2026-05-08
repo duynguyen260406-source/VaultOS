@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class OpenAccountRequest(BaseModel):
@@ -27,3 +28,19 @@ class AccountDetail(BaseModel):
 class AccountListResponse(BaseModel):
     accounts: list[AccountDetail]
     total: int
+
+
+class ChangeStatusRequest(BaseModel):
+    new_status: str
+    reason: Optional[str] = None
+    hold_expires_at: Optional[str] = None
+
+
+class StatusHistoryRecord(BaseModel):
+    history_id: int
+    account_id: int
+    old_status: Optional[str] = None
+    new_status: str
+    reason: Optional[str] = None
+    changed_at: str
+    changed_by_username: Optional[str] = None

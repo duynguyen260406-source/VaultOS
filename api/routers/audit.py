@@ -249,3 +249,85 @@ def audit_logs_summary(
         actor_counts=actor_counts,
         daily_counts=daily_counts,
     )
+
+
+@router.get("/account-balance-at")
+def account_balance_at(
+    account_id: int = Query(...),
+    at: str = Query(..., description="YYYY-MM-DD"),
+    _=Depends(require_manager_or_auditor),
+):
+    try:
+        with get_db() as (conn, cursor):
+            cursor.execute(
+                "SELECT AccountID, Balance FROM Accounts WHERE AccountID = %s", (account_id,)
+            )
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Account not found")
+
+            cursor.execute(
+                """
+                SELECT ClosingBalance
+                FROM AccountBalanceSnapshots
+                WHERE AccountID = %s AND SnapshotDate <= %s
+                ORDER BY SnapshotDate DESC LIMIT 1
+                """,
+                (account_id, at),
+            )
+            snap = cursor.fetchone()
+
+            if snap:
+                base = float(snap["ClosingBalance"])
+                snap_date_str = at
+                cursor.execute(
+                    """
+                    SELECT SnapshotDate FROM AccountBalanceSnapshots
+                    WHERE AccountID = %s AND SnapshotDate <= %s
+                    ORDER BY SnapshotDate DESC LIMIT 1
+                    """,
+                    (account_id, at),
+                )
+                sd = cursor.fetchone()
+                snap_date_str = str(sd["SnapshotDate"]) if sd else at
+
+                cursor.execute(
+                    """
+                    SELECT
+                        SUM(CASE
+                            WHEN TransactionType IN ('Deposit','Transfer_In','InterestCredit') THEN Amount
+                            ELSE -Amount
+                        END) AS delta
+                    FROM Transactions
+                    WHERE AccountID = %s
+                      AND DATE(TransactionDate) > %s
+                      AND DATE(TransactionDate) <= %s
+                    """,
+                    (account_id, snap_date_str, at),
+                )
+                delta_row = cursor.fetchone()
+                delta = float(delta_row["delta"] or 0)
+                balance_at = base + delta
+                method = "snapshot+replay"
+            else:
+                cursor.execute(
+                    """
+                    SELECT
+                        COALESCE(SUM(CASE
+                            WHEN TransactionType IN ('Deposit','Transfer_In','InterestCredit') THEN Amount
+                            ELSE -Amount
+                        END), 0) AS balance
+                    FROM Transactions
+                    WHERE AccountID = %s AND DATE(TransactionDate) <= %s
+                    """,
+                    (account_id, at),
+                )
+                row = cursor.fetchone()
+                balance_at = float(row["balance"] or 0)
+                method = "full_replay"
+
+    except HTTPException:
+        raise
+    except MySQLError as e:
+        raise db_error_to_http(e)
+
+    return {"account_id": account_id, "at": at, "balance": balance_at, "method": method}

@@ -234,3 +234,23 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+DROP FUNCTION IF EXISTS fn_rule_value$$
+
+CREATE FUNCTION fn_rule_value(p_code VARCHAR(80))
+RETURNS JSON
+READS SQL DATA
+BEGIN
+    DECLARE v_value JSON;
+
+    SELECT Value INTO v_value
+    FROM RuleSettings
+    WHERE Code = p_code AND Active = TRUE
+    LIMIT 1;
+
+    RETURN v_value;
+END$$
+
+DELIMITER ;

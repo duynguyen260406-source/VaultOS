@@ -13,3 +13,4 @@ react-app/dist/
 react-app/dist.zip
 docs/__pycache__/
 docs/
+.claude/

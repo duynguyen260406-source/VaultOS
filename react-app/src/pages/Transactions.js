@@ -1,7 +1,7 @@
 import { html } from '../lib/html.js';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { api } from '../lib/api.js';
+import { api, API } from '../lib/api.js';
 import { fmt } from '../lib/utils.js';
 import Modal from '../components/Modal.js';
 import { Spinner } from '../components/Spinner.js';
@@ -164,6 +164,7 @@ export default function Transactions() {
   const [confirmModal, setConfirmModal] = useState(null);
   const confirmResolve = useRef(null);
   const [successModal, setSuccessModal] = useState(null);
+  const [pendingModal, setPendingModal] = useState(null);
 
   useEffect(() => {
     if (!preAccountId) return;
@@ -197,7 +198,8 @@ export default function Transactions() {
     setSubmitting('deposit');
     try {
       const res = await api.deposit({ account_id: dHook.account.account_id, amount });
-      setSuccessModal({ msg: res.message, accountId: dHook.account.account_id });
+      if (res.pending) { setPendingModal({ approval_id: res.approval_id, msg: res.message }); }
+      else { setSuccessModal({ msg: res.message, accountId: dHook.account.account_id, txnId: res.transaction_id }); }
     } catch (e) { setDError(e.message); }
     finally { setSubmitting(''); }
   }
@@ -216,7 +218,8 @@ export default function Transactions() {
     setSubmitting('withdraw');
     try {
       const res = await api.withdraw({ account_id: wHook.account.account_id, amount });
-      setSuccessModal({ msg: res.message, accountId: wHook.account.account_id });
+      if (res.pending) { setPendingModal({ approval_id: res.approval_id, msg: res.message }); }
+      else { setSuccessModal({ msg: res.message, accountId: wHook.account.account_id, txnId: res.transaction_id }); }
     } catch (e) { setWError(e.message); }
     finally { setSubmitting(''); }
   }
@@ -237,7 +240,8 @@ export default function Transactions() {
     setSubmitting('transfer');
     try {
       const res = await api.transfer({ from_account_id: tFromHook.account.account_id, to_account_id: tToHook.account.account_id, amount });
-      setSuccessModal({ msg: res.message, accountId: tFromHook.account.account_id });
+      if (res.pending) { setPendingModal({ approval_id: res.approval_id, msg: res.message }); }
+      else { setSuccessModal({ msg: res.message, accountId: tFromHook.account.account_id, txnId: res.transaction_id }); }
     } catch (e) { setTError(e.message); }
     finally { setSubmitting(''); }
   }
@@ -247,6 +251,7 @@ export default function Transactions() {
     setDError(''); setWError(''); setTError('');
     dHook.clear(); wHook.clear(); tFromHook.clear(); tToHook.clear();
     setSuccessModal(null);
+    setPendingModal(null);
   }
 
   const tabMeta = {
@@ -412,7 +417,34 @@ export default function Transactions() {
           <div style="font-size:13px;color:var(--muted-foreground);margin-top:6px;">${successModal?.msg}</div>
           <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;justify-content:center;">
             <button className="btn btn-secondary" onClick=${resetForms}>New transaction</button>
+            ${successModal?.txnId && html`
+              <a href=${api.transactionReceiptUrl(successModal.txnId)} target="_blank" rel="noopener"
+                style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--foreground);font-size:13px;font-family:inherit;cursor:pointer;text-decoration:none;transition:border-color .12s;"
+                onMouseOver=${e => e.currentTarget.style.borderColor='#525252'}
+                onMouseOut=${e => e.currentTarget.style.borderColor=''}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Receipt
+              </a>
+            `}
             <${Link} to=${'/accounts/' + successModal?.accountId} className="btn btn-primary" onClick=${resetForms}>View account<//>
+          </div>
+        </div>
+      <//>
+
+      <${Modal} open=${!!pendingModal} onClose=${resetForms} title=" " footer=${null}>
+        <div style="text-align:center;padding:8px 0;">
+          <div style="width:52px;height:52px;border-radius:50%;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div style="font-size:16px;font-weight:600;letter-spacing:-.01em;color:#f5a623;">Pending approval</div>
+          <div style="font-size:13px;color:var(--muted-foreground);margin-top:6px;line-height:1.5;">${pendingModal?.msg}</div>
+          <div style="margin-top:12px;padding:10px 14px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.15);border-radius:8px;font-size:12px;color:#a1a1a1;">
+            Approval ID: <strong style="color:#f5a623;font-family:ui-monospace,monospace;">#${pendingModal?.approval_id}</strong>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;justify-content:center;">
+            <button className="btn btn-secondary" onClick=${resetForms}>New transaction</button>
+            <${Link} to="/approvals" className="btn btn-primary" onClick=${resetForms}>View approvals<//>
           </div>
         </div>
       <//>

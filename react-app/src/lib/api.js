@@ -108,6 +108,8 @@ export const api = {
   openAccount:   (d)        => req('POST', '/accounts', d),
   closeAccount:  (id)       => req('DELETE',`/accounts/${id}`),
   getTransactions:(id,p={}) => req('GET',  `/accounts/${id}/transactions${qs(p)}`),
+  changeAccountStatus:(id,d) => req('POST', `/accounts/${id}/status`, d),
+  getStatusHistory:  (id)   => req('GET',  `/accounts/${id}/status-history`),
 
   deposit:       (d)        => req('POST', '/transactions/deposit', d),
   withdraw:      (d)        => req('POST', '/transactions/withdraw', d),
@@ -138,6 +140,67 @@ export const api = {
   listAccountTypes:()       => req('GET',  '/account-types'),
   createAccountType:(d)     => req('POST', '/account-types', d),
 
+  listApprovals:    (p={})     => req('GET',  `/approvals${qs(p)}`),
+  listMyApprovals:  (p={})     => req('GET',  `/approvals/mine${qs(p)}`),
+  getApproval:      (id)       => req('GET',  `/approvals/${id}`),
+  decideApproval:   (id, d)    => req('POST', `/approvals/${id}/decide`, d),
+  retryApproval:    (id)       => req('POST', `/approvals/${id}/execute`),
+
+  listCustomerFlags:(id,p={}) => req('GET',  `/customers/${id}/flags${qs(p)}`),
+  addCustomerFlag:  (id,d)    => req('POST', `/customers/${id}/flags`, d),
+  removeCustomerFlag:(cid,fid) => req('DELETE', `/customers/${cid}/flags/${fid}`),
+  listWatchlist:    (p={})    => req('GET',  `/watchlist${qs(p)}`),
+
+  listLoans:        (p={})     => req('GET',  `/loans${qs(p)}`),
+  applyLoan:        (d)        => req('POST', '/loans', d),
+  getLoan:          (id)       => req('GET',  `/loans/${id}`),
+  decideLoan:       (id, d)    => req('PATCH',`/loans/${id}/decide`, d),
+  disburseLoan:     (id)       => req('POST', `/loans/${id}/disburse`),
+  listRepayments:   (id)       => req('GET',  `/loans/${id}/repayments`),
+  postRepayment:    (id, d)    => req('POST', `/loans/${id}/repayments`, d),
+
+  interestPending: ()         => req('GET',  '/interest/pending'),
+  runAccrualNow:   ()         => req('POST', '/interest/run-now'),
+
+  listRules:       ()         => req('GET',  '/rules'),
+  updateRule:      (code, d)  => req('PATCH',`/rules/${code}`, d),
+
+  getMySession:    ()         => req('GET',  '/eod/session'),
+  openSession:     (d)        => req('POST', '/eod/sessions/open', d),
+  closeSession:    (d)        => req('POST', '/eod/sessions/close', d),
+  listSessions:    (p={})     => req('GET',  `/eod/sessions${qs(p)}`),
+  reconcileSession:(id,d)     => req('POST', `/eod/sessions/${id}/reconcile`, d),
+
+  transactionReceiptUrl: (id)           => `${API}/documents/transactions/${id}/receipt`,
+  accountStatementUrl:   (id, p={})     => `${API}/documents/accounts/${id}/statement${qs(p)}`,
+
+  performanceSummary:(p={})  => req('GET',  `/performance/summary${qs(p)}`),
+  branchPerf:      (p={})    => req('GET',  `/performance/branch${qs(p)}`),
+  tellerPerf:      (p={})    => req('GET',  `/performance/teller${qs(p)}`),
+
+  listCases:       (p={})     => req('GET',  `/cases${qs(p)}`),
+  createCase:      (d)        => req('POST', '/cases', d),
+  getCase:         (id)       => req('GET',  `/cases/${id}`),
+  updateCase:      (id,d)     => req('PATCH',`/cases/${id}`, d),
+  addCaseLink:     (id,d)     => req('POST', `/cases/${id}/links`, d),
+  removeCaseLink:  (id,lid)   => req('DELETE',`/cases/${id}/links/${lid}`),
+  addCaseNote:     (id,d)     => req('POST', `/cases/${id}/notes`, d),
+
+  accountBalanceAt: (p={})    => req('GET',  `/audit/account-balance-at${qs(p)}`),
+  customerNetwork:  (p={})    => req('GET',  `/audit/customer-network${qs(p)}`),
+
+  listSanctionEntries:(p={})  => req('GET',  `/sanctions/entries${qs(p)}`),
+  addSanctionEntry:  (d)      => req('POST', '/sanctions/entries', d),
+  deactivateSanctionEntry:(id) => req('DELETE', `/sanctions/entries/${id}`),
+  screenCustomer:   (id)      => req('POST', `/sanctions/screen/${id}`),
+  listSanctionResults:(p={})  => req('GET',  `/sanctions/results${qs(p)}`),
+  reviewSanctionResult:(id,d) => req('PATCH',`/sanctions/results/${id}`, d),
+
+  listRegTemplates: ()        => req('GET',  '/regulatory/templates'),
+  listRegRuns:      ()        => req('GET',  '/regulatory/runs'),
+  runReportJson:    (code,p={}) => req('POST', `/regulatory/runs/${code}?output_format=JSON`, p),
+  signoffRun:       (id)      => req('POST', `/regulatory/runs/${id}/signoff`),
+  regReportCsvUrl:  (code)    => `${API}/regulatory/runs/${code}?output_format=CSV`,
   getSuspiciousActivities:(p={}) => req('GET',  `/audit/suspicious-activities${qs(p)}`),
   markReviewed:  (id, reviewed=true) => req('PATCH', `/audit/suspicious-activities/${id}`, { reviewed }),
   getAuditLogs:  (p={})          => req('GET',  `/audit/logs${qs(p)}`),

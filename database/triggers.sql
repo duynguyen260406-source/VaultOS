@@ -79,11 +79,21 @@ DELIMITER $$
 
 DROP TRIGGER IF EXISTS trg_suspicious_activity$$
 
+-- Threshold is read from RuleSettings via fn_rule_value('txn_suspicious_amount_vnd').
+-- The COALESCE fallback to 50,000,000 ensures the alert never silently disables if
+-- the rule row is missing or marked inactive (e.g., during a botched config edit).
 CREATE TRIGGER trg_suspicious_activity
 AFTER INSERT ON Transactions
 FOR EACH ROW FOLLOWS trg_log_transaction
 BEGIN
-    IF NEW.Amount >= 50000000 THEN
+    DECLARE v_threshold DECIMAL(18,2);
+
+    SET v_threshold = COALESCE(
+        CAST(JSON_UNQUOTE(fn_rule_value('txn_suspicious_amount_vnd')) AS DECIMAL(18,2)),
+        50000000
+    );
+
+    IF NEW.Amount >= v_threshold THEN
         INSERT INTO SuspiciousActivity (
             TransactionID,
             AccountID,
@@ -94,7 +104,7 @@ BEGIN
             NEW.TransactionID,
             NEW.AccountID,
             NEW.Amount,
-            'Transaction amount exceeds 50,000,000 VND threshold'
+            CONCAT('Transaction amount meets/exceeds configured suspicious threshold (', FORMAT(v_threshold, 0), ' VND)')
         );
     END IF;
 END$$

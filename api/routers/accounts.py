@@ -13,12 +13,15 @@ from dependencies import (
     require_any_role,
     require_manager,
     require_teller_or_manager,
+    require_manager_or_auditor,
 )
 from models.accounts import (
     AccountDetail,
     AccountListResponse,
     OpenAccountRequest,
     OpenAccountResponse,
+    ChangeStatusRequest,
+    StatusHistoryRecord,
 )
 from models.transactions import (
     TransactionHistoryResponse,
@@ -176,3 +179,104 @@ def api_get_transactions(
         for row in rows
     ]
     return TransactionHistoryResponse(account_id=account_id, transactions=records, total=len(records))
+
+
+@router.post("/{account_id}/status")
+def change_account_status(
+    account_id: int,
+    req: ChangeStatusRequest,
+    user=Depends(require_manager_or_auditor),
+):
+    allowed_statuses = {"Active", "Frozen", "Hold", "Dormant", "Closed"}
+    if req.new_status not in allowed_statuses:
+        raise HTTPException(status_code=422, detail=f"Invalid status: {req.new_status}")
+
+    if user["role"] == "auditor" and req.new_status != "Frozen":
+        raise HTTPException(status_code=403, detail="Auditors may only set status to Frozen")
+
+    try:
+        with get_db() as (conn, cursor):
+            cursor.execute(
+                "SELECT Status, Balance FROM Accounts WHERE AccountID = %s",
+                (account_id,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Account not found")
+
+            old_status = row["Status"]
+            if old_status == req.new_status:
+                raise HTTPException(status_code=409, detail=f"Account is already {req.new_status}")
+            if old_status == "Closed":
+                raise HTTPException(status_code=409, detail="Cannot change status of a closed account")
+
+            cursor.execute(
+                """
+                INSERT INTO AccountStatusHistory (AccountID, OldStatus, NewStatus, Reason, ChangedByUserID)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (account_id, old_status, req.new_status, req.reason, user["user_id"]),
+            )
+            cursor.execute(
+                """
+                UPDATE Accounts
+                SET Status = %s,
+                    StatusReason = %s,
+                    StatusChangedByUserID = %s,
+                    StatusChangedAt = NOW(),
+                    HoldExpiresAt = %s
+                WHERE AccountID = %s
+                """,
+                (
+                    req.new_status,
+                    req.reason,
+                    user["user_id"],
+                    req.hold_expires_at,
+                    account_id,
+                ),
+            )
+    except HTTPException:
+        raise
+    except MySQLError as e:
+        raise db_error_to_http(e)
+
+    return {"success": True, "account_id": account_id, "new_status": req.new_status}
+
+
+@router.get("/{account_id}/status-history", response_model=list[StatusHistoryRecord])
+def get_status_history(account_id: int, _=Depends(require_any_role)):
+    try:
+        with get_db() as (conn, cursor):
+            cursor.execute(
+                """
+                SELECT
+                    h.HistoryID        AS history_id,
+                    h.AccountID        AS account_id,
+                    h.OldStatus        AS old_status,
+                    h.NewStatus        AS new_status,
+                    h.Reason           AS reason,
+                    h.ChangedAt        AS changed_at,
+                    u.Username         AS changed_by_username
+                FROM AccountStatusHistory h
+                LEFT JOIN AppUsers u ON h.ChangedByUserID = u.UserID
+                WHERE h.AccountID = %s
+                ORDER BY h.ChangedAt DESC
+                """,
+                (account_id,),
+            )
+            rows = cursor.fetchall()
+    except MySQLError as e:
+        raise db_error_to_http(e)
+
+    return [
+        StatusHistoryRecord(
+            history_id=r["history_id"],
+            account_id=r["account_id"],
+            old_status=r["old_status"],
+            new_status=r["new_status"],
+            reason=r["reason"],
+            changed_at=str(r["changed_at"]),
+            changed_by_username=r["changed_by_username"],
+        )
+        for r in rows
+    ]

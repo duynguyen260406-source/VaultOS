@@ -79,6 +79,13 @@ INSERT INTO AccountTypes (TypeName, Description) VALUES
 ('Checking',    'Tai khoan thanh toan - Everyday checking account'),
 ('Fixed Deposit','Tai khoan tiet kiem co ky han - Fixed term deposit');
 
+INSERT INTO RuleSettings (Code, Value, Description) VALUES
+('txn_suspicious_amount_vnd',       JSON_QUOTE('50000000'), 'Single-transaction amount (VND) at or above which the audit pipeline flags an alert.'),
+('approval_required_amount_vnd',    JSON_QUOTE('50000000'), 'Cash transactions at or above this amount route through the maker-checker approval queue.'),
+('cash_variance_tolerance_vnd',     JSON_QUOTE('100000'),   'EOD reconciliation: maximum |variance| (VND) accepted before a teller session is marked flagged.'),
+('loan_application_max_inline_vnd', JSON_QUOTE('0'),        'Loan applications above this principal route through the maker-checker queue. 0 means always queue.'),
+('dormancy_days',                   JSON_QUOTE('365'),      'Days of inactivity after which an Active account auto-transitions to Dormant.');
+
 INSERT INTO Accounts (AccountNumber, CustomerID, AccountTypeID, BranchID, Balance, OpenDate, Status) VALUES
 ('1001-0001-0001', 1, 1, 1, 150000000.00, '2020-01-10', 'Active'),
 ('1001-0002-0001', 1, 2, 1,  25000000.00, '2020-01-10', 'Active'),

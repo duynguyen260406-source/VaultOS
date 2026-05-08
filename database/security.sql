@@ -27,6 +27,8 @@ GRANT EXECUTE ON PROCEDURE banking_system.sp_close_account TO 'role_manager';
 GRANT EXECUTE ON PROCEDURE banking_system.sp_deposit TO 'role_manager';
 GRANT EXECUTE ON PROCEDURE banking_system.sp_withdraw TO 'role_manager';
 GRANT EXECUTE ON PROCEDURE banking_system.sp_transfer TO 'role_manager';
+GRANT SELECT, INSERT, UPDATE ON banking_system.RuleSettings TO 'role_manager';
+GRANT EXECUTE ON FUNCTION banking_system.fn_rule_value TO 'role_manager';
 
 CREATE ROLE 'role_teller';
 
@@ -40,6 +42,8 @@ GRANT EXECUTE ON PROCEDURE banking_system.sp_open_account TO 'role_teller';
 GRANT EXECUTE ON PROCEDURE banking_system.sp_deposit TO 'role_teller';
 GRANT EXECUTE ON PROCEDURE banking_system.sp_withdraw TO 'role_teller';
 GRANT EXECUTE ON PROCEDURE banking_system.sp_transfer TO 'role_teller';
+GRANT SELECT ON banking_system.RuleSettings TO 'role_teller';
+GRANT EXECUTE ON FUNCTION banking_system.fn_rule_value TO 'role_teller';
 
 CREATE ROLE 'role_auditor';
 
@@ -56,6 +60,8 @@ GRANT SELECT ON banking_system.vw_customer_directory_masked TO 'role_auditor';
 GRANT SELECT ON banking_system.vw_customer_details_masked TO 'role_auditor';
 GRANT SELECT ON banking_system.vw_employee_directory_masked TO 'role_auditor';
 GRANT SELECT ON banking_system.vw_employee_details_masked TO 'role_auditor';
+GRANT SELECT ON banking_system.RuleSettings TO 'role_auditor';
+GRANT EXECUTE ON FUNCTION banking_system.fn_rule_value TO 'role_auditor';
 
 CREATE ROLE 'role_backup';
 

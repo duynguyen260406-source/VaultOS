@@ -7,8 +7,8 @@ import { fmt } from '../lib/utils.js';
 import Modal from '../components/Modal.js';
 import { Spinner, LoadingRow, RoleBadge, StatusBadge } from '../components/Spinner.js';
 
-const TABS = [['users','App Users'],['employees','Employees'],['branches','Branches'],['account-types','Account Types']];
-const ADD_LABELS = { users:'Add User', employees:'Add Employee', branches:'Add Branch', 'account-types':'Add Type' };
+const TABS = [['users','App Users'],['employees','Employees'],['branches','Branches'],['account-types','Account Types'],['rules','Rules & Limits']];
+const ADD_LABELS = { users:'Add User', employees:'Add Employee', branches:'Add Branch', 'account-types':'Add Type', rules: null };
 const PAGE_STATE_KEY = 'admin';
 
 export default function Admin() {
@@ -48,6 +48,9 @@ export default function Admin() {
       } else if (t === 'account-types') {
         const res = await api.listAccountTypes();
         setData(d => ({ ...d, 'account-types': Array.isArray(res) ? res : res.account_types || [] }));
+      } else if (t === 'rules') {
+        const res = await api.listRules();
+        setData(d => ({ ...d, rules: res.rules || [] }));
       }
     } catch (e) { toast.error(e.message); }
     finally { setLoading(false); }
@@ -73,6 +76,10 @@ export default function Admin() {
     } else if (type === 'account-types') {
       setForm({ type_name: '', description: '' });
       setModal({ type, editItem: null, title: 'New Account Type' });
+    } else if (type === 'rules') {
+      const val = typeof editItem.value === 'object' ? JSON.stringify(editItem.value) : String(editItem.value ?? '');
+      setForm({ value: val, description: editItem.description || '', active: editItem.active ? 'true' : 'false' });
+      setModal({ type, editItem, title: `Edit rule: ${editItem.code}` });
     }
   }
 
@@ -114,6 +121,15 @@ export default function Admin() {
         if (!form.type_name.trim()) throw new Error('Type name is required.');
         await api.createAccountType({ type_name: form.type_name.trim(), description: form.description.trim() || null });
         toast.success('Account type created.');
+      } else if (type === 'rules') {
+        let parsed;
+        try { parsed = JSON.parse(form.value); } catch { parsed = form.value; }
+        await api.updateRule(modal.editItem.code, {
+          value: parsed,
+          active: form.active === 'true',
+          description: form.description.trim() || null,
+        });
+        toast.success('Rule updated.');
       }
       setModal(null);
       loadTab(tab);
@@ -158,14 +174,16 @@ export default function Admin() {
     <>
       <header className="topbar">
         <span className="topbar-title">Admin Panel</span>
-        <div className="topbar-right">
-          <button className="btn btn-primary btn-sm" onClick=${() => openModal(tab, null)}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            ${ADD_LABELS[tab]}
-          </button>
-        </div>
+        ${ADD_LABELS[tab] && html`
+          <div className="topbar-right">
+            <button className="btn btn-primary btn-sm" onClick=${() => openModal(tab, null)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              ${ADD_LABELS[tab]}
+            </button>
+          </div>
+        `}
       </header>
 
       <div className="page">
@@ -279,6 +297,29 @@ export default function Admin() {
                     </tr>
                   `)}</tbody>
                 </table>
+              ` : tab === 'rules' ? html`
+                <table>
+                  <thead><tr><th>Code</th><th>Value</th><th>Description</th><th>Active</th><th>Last updated</th><th></th></tr></thead>
+                  <tbody>${rows.map(r => html`
+                    <tr key=${r.code}>
+                      <td style=${{ fontFamily:'ui-monospace,monospace', fontSize:12, fontWeight:600 }}>${r.code}</td>
+                      <td style=${{ fontSize:13, fontWeight:600, color:'#7adf2e', fontFamily:'ui-monospace,monospace' }}>
+                        ${typeof r.value === 'number' ? fmt.currency(r.value) : JSON.stringify(r.value)}
+                      </td>
+                      <td style=${{ fontSize:12, color:'var(--muted-foreground)', maxWidth:260 }}>${r.description || '-'}</td>
+                      <td>
+                        <span style=${{ display:'inline-block', padding:'2px 8px', borderRadius:12, fontSize:11, fontWeight:600, background: r.active ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.1)', color: r.active ? '#22c55e' : '#ef4444', border: `1px solid ${r.active ? 'rgba(34,197,94,.2)' : 'rgba(239,68,68,.2)'}` }}>
+                          ${r.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td style=${{ fontSize:11, color:'var(--muted-foreground)' }}>
+                        ${r.updated_at ? fmt.datetime(r.updated_at) : '-'}
+                        ${r.updated_by_username ? html` · ${r.updated_by_username}` : null}
+                      </td>
+                      <td><button className="btn btn-ghost btn-sm" onClick=${() => openModal('rules', r)}>Edit</button></td>
+                    </tr>
+                  `)}</tbody>
+                </table>
               ` : null
           }
         </div>
@@ -368,6 +409,33 @@ export default function Admin() {
         ` : modal?.type === 'reset-password' ? html`
           <form onSubmit=${handleResetPassword}>
             <div className="form-group"><label className="form-label">New password <span className="form-req">*</span></label><input type="password" className="form-input" value=${form.new_password} onChange=${e => setField('new_password', e.target.value)} /></div>
+            ${formError ? html`<div className="alert alert-danger">${formError}</div>` : null}
+          </form>
+        ` : modal?.type === 'rules' ? html`
+          <form onSubmit=${handleSave} style="display:flex;flex-direction:column;gap:14px;">
+            <div style="padding:10px 14px;background:var(--muted);border-radius:8px;font-size:12px;">
+              <div style="font-family:ui-monospace,monospace;font-weight:700;color:var(--foreground);margin-bottom:3px;">${modal?.editItem?.code}</div>
+              <div style="color:var(--muted-foreground);">${modal?.editItem?.description || 'No description.'}</div>
+            </div>
+            <div className="form-group" style="margin:0;">
+              <label className="form-label">Value <span className="form-req">*</span></label>
+              <input className="form-input" value=${form.value}
+                onChange=${e => setField('value', e.target.value)}
+                placeholder="Numeric value, e.g. 50000000" style="font-family:ui-monospace,monospace;" />
+              <div style="font-size:11.5px;color:var(--muted-foreground);margin-top:4px;">Enter a number or valid JSON.</div>
+            </div>
+            <div className="form-group" style="margin:0;">
+              <label className="form-label">Description</label>
+              <input className="form-input" value=${form.description}
+                onChange=${e => setField('description', e.target.value)} />
+            </div>
+            <div className="form-group" style="margin:0;">
+              <label className="form-label">Active</label>
+              <select className="form-select" value=${form.active} onChange=${e => setField('active', e.target.value)}>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </div>
             ${formError ? html`<div className="alert alert-danger">${formError}</div>` : null}
           </form>
         ` : null}

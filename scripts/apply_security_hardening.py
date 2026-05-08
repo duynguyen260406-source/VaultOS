@@ -209,6 +209,9 @@ def main() -> int:
     context_signing_key = os.getenv("DB_CONTEXT_SIGNING_KEY", os.getenv("JWT_SECRET_KEY", encryption_key))
     auth_user = os.getenv("DB_AUTH_USER", "app_auth_user")
     auth_host = os.getenv("DB_AUTH_HOST", "localhost")
+    # In cloud/proxy deployments USER() returns an internal IP, not the proxy hostname.
+    # DB_ADMIN_HOST_PATTERN overrides what gets stored in AppRuntimeSecrets for host matching.
+    admin_host_pattern = os.getenv("DB_ADMIN_HOST_PATTERN", host)
 
     if not encryption_key:
         print("[ERROR] Missing DB_ENCRYPTION_KEY", file=sys.stderr)
@@ -234,7 +237,7 @@ def main() -> int:
         cursor.execute(f"USE `{db_name}`")
 
         _ensure_session_version(cursor, db_name)
-        _ensure_runtime_secrets(cursor, db_name, context_signing_key, auth_user, auth_host, user, host)
+        _ensure_runtime_secrets(cursor, db_name, context_signing_key, auth_user, auth_host, user, admin_host_pattern)
         _execute_sql_file(cursor, BASE_DIR / "database" / "functions.sql")
         _execute_sql_file(cursor, BASE_DIR / "database" / "procedures.sql")
         _execute_sql_file(cursor, BASE_DIR / "database" / "triggers.sql")

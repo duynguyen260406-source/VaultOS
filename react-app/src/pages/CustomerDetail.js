@@ -14,9 +14,12 @@ export default function CustomerDetail() {
   const toast = useToast();
   const navigate = useNavigate();
   const canCreate = ['manager', 'teller'].includes(user?.role);
+  const canManageFlags = ['manager', 'auditor'].includes(user?.role);
+  const [screening, setScreening] = useState(false);
 
   const [customer, setCustomer] = useState(null);
   const [accounts, setAccounts] = useState(null);
+  const [flags, setFlags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -28,16 +31,61 @@ export default function CustomerDetail() {
   const [oaError, setOaError] = useState('');
   const [oaLoading, setOaLoading] = useState(false);
 
+  const [flagModal, setFlagModal] = useState(false);
+  const [flagForm, setFlagForm] = useState({ flag_type: 'VIP', reason: '', expires_at: '' });
+  const [flagError, setFlagError] = useState('');
+  const [flagSaving, setFlagSaving] = useState(false);
+
   useEffect(() => { load(); }, [id]);
 
   async function load() {
     setLoading(true); setError('');
     try {
-      const [cust, accsRes] = await Promise.all([api.getCustomer(id), api.getCustomerAccounts(id)]);
+      const [cust, accsRes, flagsRes] = await Promise.all([
+        api.getCustomer(id),
+        api.getCustomerAccounts(id),
+        api.listCustomerFlags(id, { active_only: false }).catch(() => []),
+      ]);
       setCustomer(cust);
       setAccounts(accsRes.accounts || []);
+      setFlags(Array.isArray(flagsRes) ? flagsRes : []);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
+  }
+
+  async function handleAddFlag(e) {
+    e.preventDefault();
+    setFlagSaving(true); setFlagError('');
+    try {
+      await api.addCustomerFlag(id, {
+        flag_type: flagForm.flag_type,
+        reason: flagForm.reason || null,
+        expires_at: flagForm.expires_at || null,
+      });
+      toast.success(`${flagForm.flag_type} flag added.`);
+      setFlagModal(false);
+      load();
+    } catch (e) { setFlagError(e.message); }
+    finally { setFlagSaving(false); }
+  }
+
+  async function handleScreen() {
+    setScreening(true);
+    try {
+      const res = await api.screenCustomer(id);
+      if (res.matches > 0) toast.error(`${res.matches} sanctions match(es) found! Review in Sanctions page.`);
+      else toast.success('Screening complete: no matches found.');
+    } catch (e) { toast.error(e.message); }
+    finally { setScreening(false); }
+  }
+
+  async function handleRemoveFlag(flagId, flagType) {
+    if (!confirm(`Remove ${flagType} flag?`)) return;
+    try {
+      await api.removeCustomerFlag(id, flagId);
+      toast.success('Flag removed.');
+      load();
+    } catch (e) { toast.error(e.message); }
   }
 
   async function openAccountModal() {
@@ -90,10 +138,17 @@ export default function CustomerDetail() {
           <span className="topbar-title">${customer?.first_name} ${customer?.last_name}</span>
         </div>
         <div className="topbar-right">
-          ${canCreate && html`<button className="btn btn-primary btn-sm" onClick=${openAccountModal}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Open Account
-          </button>`}
+          <div style="display:flex;gap:6px;">
+            ${canManageFlags && html`
+              <button className="btn btn-secondary btn-sm" onClick=${handleScreen} disabled=${screening}>
+                ${screening ? html`<${Spinner} />` : 'Screen Sanctions'}
+              </button>
+            `}
+            ${canCreate && html`<button className="btn btn-primary btn-sm" onClick=${openAccountModal}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Open Account
+            </button>`}
+          </div>
         </div>
       </header>
 
@@ -122,6 +177,22 @@ export default function CustomerDetail() {
             `)}
           </div>
         </div>
+
+        ${(() => {
+          const blocking = flags.filter(f => f.is_active && ['Blacklist','CourtOrder','Incapacitated','Deceased'].includes(f.flag_type));
+          const active = flags.filter(f => f.is_active);
+          if (!active.length) return null;
+          const isBlocked = blocking.length > 0;
+          const color = isBlocked ? '#ef4444' : '#f59e0b';
+          const bg = isBlocked ? 'rgba(239,68,68,.08)' : 'rgba(245,158,11,.08)';
+          return html`
+            <div style="padding:10px 14px;border-radius:8px;background:${bg};border:1px solid ${color}33;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span style="font-size:12px;font-weight:600;color:${color};">${isBlocked ? 'BLOCKED' : 'FLAGGED'}</span>
+              <span style="font-size:12px;color:var(--foreground);">${active.map(f => f.flag_type).join(', ')}</span>
+            </div>
+          `;
+        })()}
 
         <div className="tbl-wrap">
           <div className="tbl-head">
@@ -155,7 +226,82 @@ export default function CustomerDetail() {
             </div>
           `}
         </div>
+        <div className="tbl-wrap" style="margin-top:16px;">
+          <div className="tbl-head">
+            <span className="tbl-head-title">Flags (${flags.length})</span>
+            ${canManageFlags && html`
+              <button className="btn btn-secondary btn-sm"
+                onClick=${() => { setFlagForm({ flag_type: 'VIP', reason: '', expires_at: '' }); setFlagError(''); setFlagModal(true); }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Flag
+              </button>
+            `}
+          </div>
+          ${flags.length ? html`
+            <table>
+              <thead><tr><th>Type</th><th>Reason</th><th>Added</th><th>Expires</th><th>Status</th>${canManageFlags ? html`<th></th>` : null}</tr></thead>
+              <tbody>${flags.map(f => html`
+                <tr key=${f.flag_id}>
+                  <td><span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:${
+                    f.flag_type === 'VIP' ? 'rgba(250,204,21,.15)' :
+                    f.flag_type === 'Blacklist' ? 'rgba(239,68,68,.15)' :
+                    'rgba(100,116,139,.15)'
+                  };color:${
+                    f.flag_type === 'VIP' ? '#ca8a04' :
+                    f.flag_type === 'Blacklist' ? '#ef4444' :
+                    'var(--muted-foreground)'
+                  };">${f.flag_type}</span></td>
+                  <td style="font-size:12px;color:var(--body-muted);">${f.reason || '—'}</td>
+                  <td style="font-size:12px;color:var(--body-muted);">${fmt.date(f.added_at)}</td>
+                  <td style="font-size:12px;color:var(--body-muted);">${f.expires_at ? fmt.date(f.expires_at) : '—'}</td>
+                  <td><span style="font-size:11px;padding:2px 7px;border-radius:4px;background:${f.is_active ? 'rgba(122,223,46,.15)' : 'rgba(100,116,139,.1)'};color:${f.is_active ? '#7adf2e' : 'var(--muted-foreground)'};">${f.is_active ? 'Active' : 'Removed'}</span></td>
+                  ${canManageFlags ? html`<td>${f.is_active ? html`<button className="btn btn-ghost btn-sm" onClick=${() => handleRemoveFlag(f.flag_id, f.flag_type)} style="color:#ef4444;">Remove</button>` : null}</td>` : null}
+                </tr>
+              `)}</tbody>
+            </table>
+          ` : html`
+            <div className="empty-state" style="padding:24px 0;">
+              <div className="empty-state-title">No flags</div>
+              <div className="empty-state-text">No flags on this customer.</div>
+            </div>
+          `}
+        </div>
       </div>
+
+      <${Modal}
+        open=${flagModal}
+        onClose=${() => setFlagModal(false)}
+        title="Add Customer Flag"
+        footer=${html`
+          <button className="btn btn-secondary" onClick=${() => setFlagModal(false)}>Cancel</button>
+          <button className="btn btn-primary" onClick=${handleAddFlag} disabled=${flagSaving}>
+            ${flagSaving ? html`<${Spinner} />` : 'Add Flag'}
+          </button>
+        `}
+      >
+        <div style="display:flex;flex-direction:column;gap:14px;font-size:13px;">
+          <div className="form-group" style="margin:0;">
+            <label className="form-label">Flag type <span className="form-req">*</span></label>
+            <select className="form-input" value=${flagForm.flag_type}
+              onChange=${e => setFlagForm(p => ({ ...p, flag_type: e.target.value }))}>
+              ${['VIP','Blacklist','UnderInvestigation','PEP','Deceased','Incapacitated','CourtOrder']
+                .map(t => html`<option key=${t} value=${t}>${t}</option>`)}
+            </select>
+          </div>
+          <div className="form-group" style="margin:0;">
+            <label className="form-label">Reason</label>
+            <input className="form-input" value=${flagForm.reason}
+              onChange=${e => setFlagForm(p => ({ ...p, reason: e.target.value }))}
+              placeholder="Reason or notes" />
+          </div>
+          <div className="form-group" style="margin:0;">
+            <label className="form-label">Expires (optional)</label>
+            <input type="date" className="form-input" value=${flagForm.expires_at}
+              onChange=${e => setFlagForm(p => ({ ...p, expires_at: e.target.value }))} />
+          </div>
+          ${flagError && html`<div className="alert alert-danger">${flagError}</div>`}
+        </div>
+      <//>
 
       <${Modal}
         open=${modalOpen}

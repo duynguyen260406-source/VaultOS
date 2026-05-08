@@ -42,7 +42,7 @@ load_project_env()
 validate_production_config()
 
 from routers import customers, accounts, transactions, reports
-from routers import auth, branches, employees, account_types, users, audit
+from routers import auth, branches, employees, account_types, users, audit, approvals, documents, eod, rules, interest, loans, customer_flags, cases, performance, regulatory, sanctions, network
 from dependencies import AUTH_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME
 
 _docs_enabled = (not is_prod()) or env_flag("APP_EXPOSE_DOCS")
@@ -198,6 +198,18 @@ app.include_router(employees.router, prefix="/employees", tags=["employees"])
 app.include_router(account_types.router, prefix="/account-types", tags=["account-types"])
 app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(audit.router, prefix="/audit", tags=["audit"])
+app.include_router(approvals.router, prefix="/approvals", tags=["approvals"])
+app.include_router(documents.router, prefix="/documents", tags=["documents"])
+app.include_router(eod.router,       prefix="/eod",       tags=["eod"])
+app.include_router(rules.router,     prefix="/rules",     tags=["rules"])
+app.include_router(interest.router,  prefix="/interest",  tags=["interest"])
+app.include_router(loans.router,     prefix="/loans",     tags=["loans"])
+app.include_router(customer_flags.router, tags=["customer-flags"])
+app.include_router(cases.router, prefix="/cases", tags=["cases"])
+app.include_router(performance.router, prefix="/performance", tags=["performance"])
+app.include_router(regulatory.router, prefix="/regulatory", tags=["regulatory"])
+app.include_router(sanctions.router, prefix="/sanctions", tags=["sanctions"])
+app.include_router(network.router, prefix="/audit", tags=["network"])
 
 logger.info("Banking Management API started - all routers registered")
 

@@ -62,6 +62,7 @@ class TransactionRecord(BaseModel):
 class TransactionResponse(BaseModel):
     success: bool
     message: str
+    transaction_id: Optional[int] = None
 
 
 class TransactionHistoryResponse(BaseModel):

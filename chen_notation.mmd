@@ -1,0 +1,45 @@
+graph LR
+    classDef entity fill:#DBEAFE,stroke:#1D4ED8,stroke-width:2px,color:#1E3A8A,font-weight:bold
+    classDef rel fill:#FEF9C3,stroke:#D97706,stroke-width:2px,color:#78350F
+
+    BR["BRANCHES"]:::entity
+    EMP["EMPLOYEES"]:::entity
+    CUST["CUSTOMERS"]:::entity
+    USR["APP_USERS"]:::entity
+    AT["ACCOUNT_TYPES"]:::entity
+    ACC["ACCOUNTS"]:::entity
+    TXN["TRANSACTIONS"]:::entity
+    LN["LOANS"]:::entity
+    SA["SUSPICIOUS_ACTIVITY"]:::entity
+    AL["AUDIT_LOG"]:::entity
+    ARS["APP_RUNTIME_SECRETS"]:::entity
+
+    R1{"WORKS AT"}:::rel
+    R2{"MANAGES"}:::rel
+    R3{"STAFF LOGIN"}:::rel
+    R4{"CUST LOGIN"}:::rel
+    R5{"OWNS"}:::rel
+    R6{"TAKES"}:::rel
+    R7{"TYPED AS"}:::rel
+    R8{"HOSTED BY"}:::rel
+    R9{"CONTAINS"}:::rel
+    R10{"LINKED TRANSFER"}:::rel
+    R11{"TRIGGERS ALERT"}:::rel
+    R12{"ISSUES"}:::rel
+    R13{"RECORDS"}:::rel
+    R14{"CREATED BY"}:::rel
+
+    EMP -- "N" --- R1 -- "1" --- BR
+    EMP -- "1" --- R2 -- "N" --- EMP
+    EMP -- "1" --- R3 -- "0..1" --- USR
+    CUST -- "1" --- R4 -- "0..1" --- USR
+    CUST -- "1" --- R5 -- "N" --- ACC
+    CUST -- "1" --- R6 -- "N" --- LN
+    AT -- "1" --- R7 -- "N" --- ACC
+    ACC -- "N" --- R8 -- "1" --- BR
+    ACC -- "1" --- R9 -- "N" --- TXN
+    TXN -- "1" --- R10 -- "0..1" --- TXN
+    TXN -- "1" --- R11 -- "0..1" --- SA
+    LN -- "N" --- R12 -- "1" --- BR
+    TXN -- "N" --- R13 -- "1" --- AL
+    USR -- "N" --- R14 -- "1" --- USR

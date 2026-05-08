@@ -46,14 +46,20 @@ def close_account(account_id, raise_on_error=False):
             raise
         return False
 
-def deposit(account_id, amount, raise_on_error=False):
+def deposit(account_id, amount, raise_on_error=False, return_id=False):
     if amount <= 0:
         print("[ERROR] Deposit amount must be greater than zero.")
-        return False
+        return None if return_id else False
 
     try:
         with get_db() as (conn, cursor):
             cursor.callproc("sp_deposit", (account_id, amount))
+            if return_id:
+                cursor.execute("SELECT LAST_INSERT_ID() AS txn_id")
+                row = cursor.fetchone()
+                txn_id = int(row["txn_id"]) if row and row["txn_id"] else None
+                print(f"Deposit of ${amount:.2f} to account {account_id} completed (txn={txn_id}).")
+                return txn_id
             print(f"Deposit of ${amount:.2f} to account {account_id} completed successfully.")
             return True
 
@@ -61,17 +67,23 @@ def deposit(account_id, amount, raise_on_error=False):
         logger.error("Deposit failed for account %s: %s", account_id, e)
         if raise_on_error:
             raise
-        return False
+        return None if return_id else False
 
 
-def withdraw(account_id, amount, raise_on_error=False):
+def withdraw(account_id, amount, raise_on_error=False, return_id=False):
     if amount <= 0:
         print("[ERROR] Withdrawal amount must be greater than zero.")
-        return False
+        return None if return_id else False
 
     try:
         with get_db() as (conn, cursor):
             cursor.callproc("sp_withdraw", (account_id, amount))
+            if return_id:
+                cursor.execute("SELECT LAST_INSERT_ID() AS txn_id")
+                row = cursor.fetchone()
+                txn_id = int(row["txn_id"]) if row and row["txn_id"] else None
+                print(f"Withdrawal of ${amount:.2f} from account {account_id} completed (txn={txn_id}).")
+                return txn_id
             print(f"Withdrawal of ${amount:.2f} from account {account_id} completed successfully.")
             return True
 
@@ -79,26 +91,36 @@ def withdraw(account_id, amount, raise_on_error=False):
         logger.error("Withdrawal failed for account %s: %s", account_id, e)
         if raise_on_error:
             raise
-        return False
+        return None if return_id else False
 
 
-def transfer(from_id, to_id, amount, raise_on_error=False):
+def transfer(from_id, to_id, amount, raise_on_error=False, return_id=False):
     """
     Transfer money between accounts using the sp_transfer stored procedure.
 
-    Returns True on success, False on failure.
+    Returns True on success, False on failure (or the transfer-out transaction ID if return_id=True).
     """
     if amount <= 0:
         print("[ERROR] Transfer amount must be greater than zero.")
-        return False
+        return None if return_id else False
 
     if from_id == to_id:
         print("[ERROR] Source and destination accounts must be different.")
-        return False
+        return None if return_id else False
 
     try:
         with get_db() as (conn, cursor):
             cursor.callproc("sp_transfer", (from_id, to_id, amount))
+            if return_id:
+                cursor.execute(
+                    "SELECT TransactionID FROM Transactions WHERE AccountID = %s "
+                    "AND TransactionType = 'Transfer_Out' ORDER BY TransactionID DESC LIMIT 1",
+                    (from_id,),
+                )
+                row = cursor.fetchone()
+                txn_id = int(row["TransactionID"]) if row else None
+                print(f"Transfer of ${amount:.2f} from {from_id} to {to_id} completed (txn={txn_id}).")
+                return txn_id
             print(
                 f"Transfer of ${amount:.2f} from account {from_id} "
                 f"to account {to_id} completed successfully."

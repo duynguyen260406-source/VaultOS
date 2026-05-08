@@ -1,0 +1,132 @@
+erDiagram
+    Branches {
+        int BranchID PK
+        varchar BranchName
+        varchar Address
+        varchar City
+        varchar Phone
+        date EstablishedDate
+    }
+
+    Employees {
+        int EmployeeID PK
+        varchar FirstName
+        varchar LastName
+        varchar Position
+        decimal Salary
+        date HireDate
+        int BranchID FK
+        int ManagerID FK
+        varbinary Email
+        char EmailHash
+        int EncryptionKeyVersion
+    }
+
+    Customers {
+        int CustomerID PK
+        varchar FirstName
+        varchar LastName
+        date DateOfBirth
+        enum Gender
+        varbinary IdentityNumber
+        char IdentityHash
+        varbinary Phone
+        char PhoneHash
+        int EncryptionKeyVersion
+        varchar Address
+        date RegistrationDate
+    }
+
+    AppUsers {
+        int UserID PK
+        varchar Username
+        varchar PasswordHash
+        enum Role
+        enum Status
+        int EmployeeID FK
+        int CustomerID FK
+        int FailedLoginCount
+        datetime LastLoginAt
+        int CreatedByUserID FK
+        datetime CreatedAt
+    }
+
+    AppRuntimeSecrets {
+        varchar SecretName PK
+        varchar SecretValue
+        datetime UpdatedAt
+    }
+
+    AccountTypes {
+        int AccountTypeID PK
+        varchar TypeName
+        text Description
+    }
+
+    Accounts {
+        int AccountID PK
+        varchar AccountNumber
+        int CustomerID FK
+        int AccountTypeID FK
+        int BranchID FK
+        decimal Balance
+        date OpenDate
+        enum Status
+    }
+
+    Transactions {
+        int TransactionID PK
+        int AccountID FK
+        enum TransactionType
+        decimal Amount
+        datetime TransactionDate
+        text Description
+        int ReferenceID FK
+    }
+
+    Loans {
+        int LoanID PK
+        int CustomerID FK
+        int BranchID FK
+        decimal LoanAmount
+        decimal InterestRate
+        date StartDate
+        date EndDate
+        enum Status
+    }
+
+    AuditLog {
+        int AuditID PK
+        varchar TableName
+        varchar ActionType
+        int RecordID
+        json OldValues
+        json NewValues
+        datetime ActionTimestamp
+        varchar PerformedBy
+    }
+
+    SuspiciousActivity {
+        int AlertID PK
+        int TransactionID FK
+        int AccountID FK
+        decimal Amount
+        datetime AlertDate
+        text Reason
+        boolean Reviewed
+    }
+
+    Branches           ||--o{ Employees         : "employs"
+    Employees          }o--o| Employees          : "managed by"
+    Employees          ||--o| AppUsers           : "linked to"
+    Customers          ||--o| AppUsers           : "linked to"
+    AppUsers           }o--o| AppUsers           : "created by"
+    Customers          ||--o{ Accounts           : "owns"
+    AccountTypes       ||--o{ Accounts           : "categorizes"
+    Branches           ||--o{ Accounts           : "holds"
+    Accounts           ||--o{ Transactions       : "has"
+    Transactions       }o--o| Transactions       : "references"
+    Customers          ||--o{ Loans              : "borrows"
+    Branches           ||--o{ Loans              : "issues"
+    Transactions       ||--o{ SuspiciousActivity : "flagged as"
+    Accounts           ||--o{ SuspiciousActivity : "involved in"
