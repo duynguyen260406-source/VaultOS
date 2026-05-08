@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import { useToast } from '../contexts/ToastContext.js';
 import { api } from '../lib/api.js';
+import { clearDataCache } from '../lib/dataCache.js';
 import { fmt } from '../lib/utils.js';
 import { Spinner, LoadingRow } from '../components/Spinner.js';
 
@@ -49,18 +50,15 @@ function timeAgo(dt) {
 
 // ─── KPI card ─────────────────────────────────────────────────────────────────
 
-function KPI({ label, value, color = 'var(--foreground)', icon }) {
+function KPI({ label, value, color = 'var(--foreground)' }) {
   return html`
     <div style=${{
       flex: 1, minWidth: 120,
       background: 'var(--card)', border: '1px solid var(--border)',
       borderRadius: 10, padding: '14px 18px',
     }}>
-      <div style=${{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <span style=${{ fontSize: 16 }}>${icon}</span>
-        <span style=${{ fontSize: 11, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.07em' }}>${label}</span>
-      </div>
-      <div style=${{ fontSize: 28, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>${value}</div>
+      <div style=${{ fontSize: 11, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>${label}</div>
+      <div style=${{ fontSize: 26, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>${value}</div>
     </div>
   `;
 }
@@ -364,6 +362,7 @@ export default function Approvals() {
   const [decideModal, setDecideModal] = useState(null);
 
   const load = useCallback(async () => {
+    clearDataCache();
     setLoading(true);
     try {
       let data;
@@ -432,10 +431,10 @@ export default function Approvals() {
       <div className="page">
         <!-- KPIs -->
         <div style=${{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-          <${KPI} label="Pending" value=${stats.pending} color="#f5a623" icon="⏳" />
-          <${KPI} label="Approved Today" value=${stats.approved_today} color="#22c55e" icon="✓" />
-          <${KPI} label="Rejected Today" value=${stats.rejected_today} color="#ef4444" icon="✕" />
-          <${KPI} label="Executed Today" value=${stats.executed_today} color="#60a5fa" icon="⚡" />
+          <${KPI} label="Pending" value=${stats.pending} color="#f5a623" />
+          <${KPI} label="Approved Today" value=${stats.approved_today} color="#22c55e" />
+          <${KPI} label="Rejected Today" value=${stats.rejected_today} color="#ef4444" />
+          <${KPI} label="Executed Today" value=${stats.executed_today} color="#60a5fa" />
         </div>
 
         <!-- Tabs -->
@@ -469,9 +468,6 @@ export default function Approvals() {
                 padding: '52px 20px', textAlign: 'center',
                 color: 'var(--muted-foreground)', fontSize: 13,
               }}>
-                <div style=${{ fontSize: 32, marginBottom: 12 }}>
-                  ${activeTab === 'pending' ? '✓' : '○'}
-                </div>
                 ${activeTab === 'pending' ? 'No pending approvals.' : 'No records found.'}
               </div>
             `

@@ -196,6 +196,7 @@ export const api = {
   listRegRuns:      ()        => req('GET',  '/regulatory/runs'),
   runReportJson:    (code,p={}) => req('POST', `/regulatory/runs/${code}?output_format=JSON`, p),
   signoffRun:       (id)      => req('POST', `/regulatory/runs/${id}/signoff`),
+  voidRun:          (id)      => req('DELETE', `/regulatory/runs/${id}`),
   regReportCsvUrl:  (code)    => `${API}/regulatory/runs/${code}?output_format=CSV`,
   getSuspiciousActivities:(p={}) => req('GET',  `/audit/suspicious-activities${qs(p)}`),
   markReviewed:  (id, reviewed=true) => req('PATCH', `/audit/suspicious-activities/${id}`, { reviewed }),

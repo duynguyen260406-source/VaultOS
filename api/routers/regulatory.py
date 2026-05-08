@@ -212,6 +212,24 @@ def run_report(
     }
 
 
+@router.delete("/runs/{run_id}")
+def void_run(run_id: int, user=Depends(require_manager_or_auditor)):
+    try:
+        with get_db() as (conn, cursor):
+            cursor.execute("SELECT SignedOffByUserID FROM RegulatoryReportRuns WHERE RunID=%s", (run_id,))
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Run not found")
+            if row["SignedOffByUserID"]:
+                raise HTTPException(status_code=409, detail="Cannot void a signed-off report")
+            cursor.execute("DELETE FROM RegulatoryReportRuns WHERE RunID=%s", (run_id,))
+    except HTTPException:
+        raise
+    except MySQLError as e:
+        raise db_error_to_http(e)
+    return {"success": True}
+
+
 @router.post("/runs/{run_id}/signoff")
 def signoff_run(run_id: int, user=Depends(require_manager_or_auditor)):
     try:

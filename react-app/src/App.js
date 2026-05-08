@@ -18,7 +18,6 @@ import Approvals from './pages/Approvals.js';
 import EndOfDay from './pages/EndOfDay.js';
 import Loans from './pages/Loans.js';
 import CustomerWatchlist from './pages/CustomerWatchlist.js';
-import AuditCases from './pages/AuditCases.js';
 import RegulatoryReports from './pages/RegulatoryReports.js';
 import Sanctions from './pages/Sanctions.js';
 import CustomerNetwork from './pages/CustomerNetwork.js';
@@ -59,11 +58,6 @@ function AppRoutes() {
           <${Route} path="/audit" element=${html`
             <${ProtectedRoute} roles=${['manager','auditor']}>
               <${Audit} />
-            <//>
-          `} />
-          <${Route} path="/cases" element=${html`
-            <${ProtectedRoute} roles=${['manager','auditor']}>
-              <${AuditCases} />
             <//>
           `} />
           <${Route} path="/regulatory" element=${html`
