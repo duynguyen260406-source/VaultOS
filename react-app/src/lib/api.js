@@ -174,10 +174,6 @@ export const api = {
   transactionReceiptUrl: (id)           => `${API}/documents/transactions/${id}/receipt`,
   accountStatementUrl:   (id, p={})     => `${API}/documents/accounts/${id}/statement${qs(p)}`,
 
-  performanceSummary:(p={})  => req('GET',  `/performance/summary${qs(p)}`),
-  branchPerf:      (p={})    => req('GET',  `/performance/branch${qs(p)}`),
-  tellerPerf:      (p={})    => req('GET',  `/performance/teller${qs(p)}`),
-
   listCases:       (p={})     => req('GET',  `/cases${qs(p)}`),
   createCase:      (d)        => req('POST', '/cases', d),
   getCase:         (id)       => req('GET',  `/cases/${id}`),

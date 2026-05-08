@@ -42,7 +42,7 @@ load_project_env()
 validate_production_config()
 
 from routers import customers, accounts, transactions, reports
-from routers import auth, branches, employees, account_types, users, audit, approvals, documents, eod, rules, interest, loans, customer_flags, cases, performance, regulatory, sanctions, network
+from routers import auth, branches, employees, account_types, users, audit, approvals, documents, eod, rules, interest, loans, customer_flags, cases, regulatory, sanctions, network
 from dependencies import AUTH_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME
 
 _docs_enabled = (not is_prod()) or env_flag("APP_EXPOSE_DOCS")
@@ -206,7 +206,6 @@ app.include_router(interest.router,  prefix="/interest",  tags=["interest"])
 app.include_router(loans.router,     prefix="/loans",     tags=["loans"])
 app.include_router(customer_flags.router, tags=["customer-flags"])
 app.include_router(cases.router, prefix="/cases", tags=["cases"])
-app.include_router(performance.router, prefix="/performance", tags=["performance"])
 app.include_router(regulatory.router, prefix="/regulatory", tags=["regulatory"])
 app.include_router(sanctions.router, prefix="/sanctions", tags=["sanctions"])
 app.include_router(network.router, prefix="/audit", tags=["network"])

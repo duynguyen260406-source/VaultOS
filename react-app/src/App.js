@@ -19,7 +19,6 @@ import EndOfDay from './pages/EndOfDay.js';
 import Loans from './pages/Loans.js';
 import CustomerWatchlist from './pages/CustomerWatchlist.js';
 import AuditCases from './pages/AuditCases.js';
-import Performance from './pages/Performance.js';
 import RegulatoryReports from './pages/RegulatoryReports.js';
 import Sanctions from './pages/Sanctions.js';
 import CustomerNetwork from './pages/CustomerNetwork.js';
@@ -65,11 +64,6 @@ function AppRoutes() {
           <${Route} path="/cases" element=${html`
             <${ProtectedRoute} roles=${['manager','auditor']}>
               <${AuditCases} />
-            <//>
-          `} />
-          <${Route} path="/performance" element=${html`
-            <${ProtectedRoute} roles=${['manager']}>
-              <${Performance} />
             <//>
           `} />
           <${Route} path="/regulatory" element=${html`
