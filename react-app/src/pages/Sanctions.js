@@ -175,7 +175,7 @@ export default function Sanctions() {
                           <div style="display:flex;gap:4px;flex-wrap:wrap;">
                             ${REVIEW_OPTS.map(s => html`
                               <button key=${s} className="btn btn-ghost btn-sm"
-                                style="font-size:10px;padding:2px 6px;color:${s==='Confirmed' ? '#ef4444' : s==='FalsePositive' ? '#64748b' : '#7adf2e'};"
+                                style="font-size:10px;padding:2px 6px;color:${s==='Confirmed' ? '#ef4444' : s==='False Positive' ? '#64748b' : '#7adf2e'};"
                                 onClick=${() => handleReview(r.result_id, s)}>
                                 ${s}
                               </button>
