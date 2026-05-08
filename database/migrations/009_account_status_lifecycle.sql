@@ -13,8 +13,6 @@ ALTER TABLE Accounts
 ALTER TABLE Accounts
   ADD CONSTRAINT fk_accounts_status_user FOREIGN KEY (StatusChangedByUserID) REFERENCES AppUsers(UserID) ON DELETE SET NULL;
 
-UPDATE Accounts SET LastActivityAt = UpdatedAt WHERE LastActivityAt IS NULL;
-
 CREATE TABLE IF NOT EXISTS AccountStatusHistory (
   HistoryID      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   AccountID      INT NOT NULL,

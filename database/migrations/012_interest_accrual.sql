@@ -3,11 +3,11 @@
 -- and extends the TransactionType enum to cover system-generated credits/debits.
 
 ALTER TABLE AccountTypes
-    ADD COLUMN IF NOT EXISTS InterestRate    DECIMAL(7,4) NULL     DEFAULT NULL COMMENT 'Annual interest rate (e.g. 0.0450 = 4.5%)',
-    ADD COLUMN IF NOT EXISTS AccruesInterest TINYINT(1)   NOT NULL DEFAULT 0    COMMENT '1 = daily interest accrual enabled';
+    ADD COLUMN InterestRate    DECIMAL(7,4) NULL     DEFAULT NULL COMMENT 'Annual interest rate (e.g. 0.0450 = 4.5%)',
+    ADD COLUMN AccruesInterest TINYINT(1)   NOT NULL DEFAULT 0    COMMENT '1 = daily interest accrual enabled';
 
 ALTER TABLE Accounts
-    ADD COLUMN IF NOT EXISTS LastInterestAccruedDate DATE NULL DEFAULT NULL;
+    ADD COLUMN LastInterestAccruedDate DATE NULL DEFAULT NULL;
 
 ALTER TABLE Transactions
     MODIFY COLUMN TransactionType

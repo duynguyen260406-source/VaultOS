@@ -17,33 +17,61 @@ def _split_sql(sql: str) -> list[str]:
     in_string = False
     quote = ""
     escape = False
+    chars = sql
+    i = 0
+    n = len(chars)
 
-    for ch in sql:
-        current.append(ch)
+    while i < n:
+        ch = chars[i]
         if escape:
+            current.append(ch)
             escape = False
+            i += 1
             continue
-        if ch == "\\":
+        if ch == "\\" and in_string:
+            current.append(ch)
             escape = True
+            i += 1
             continue
         if in_string:
+            current.append(ch)
             if ch == quote:
                 in_string = False
+            i += 1
             continue
-        if ch in {"'", '"'}:
+        if ch == "-" and i + 1 < n and chars[i + 1] == "-":
+            while i < n and chars[i] != "\n":
+                i += 1
+            continue
+        if ch in {"'", '"', "`"}:
             in_string = True
             quote = ch
+            current.append(ch)
+            i += 1
             continue
         if ch == ";":
-            statement = "".join(current).strip()
-            if statement:
-                statements.append(statement[:-1].strip())
+            stmt = "".join(current).strip()
+            if stmt:
+                statements.append(stmt)
             current = []
+            i += 1
+            continue
+        current.append(ch)
+        i += 1
 
     tail = "".join(current).strip()
     if tail:
         statements.append(tail)
-    return [stmt for stmt in statements if stmt and not stmt.startswith("--")]
+
+    result = []
+    for stmt in statements:
+        lines = stmt.splitlines()
+        while lines and lines[0].strip().startswith("--"):
+            lines.pop(0)
+        cleaned = "\n".join(lines).strip()
+        if cleaned:
+            result.append(cleaned)
+    return result
 
 
 def _connect():

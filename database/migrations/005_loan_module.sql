@@ -1,24 +1,20 @@
--- Migration 005: Enhanced loan lifecycle
--- Extends the existing Loans table and adds LoanRepayments.
-
 ALTER TABLE Loans
-    ADD COLUMN IF NOT EXISTS Purpose              VARCHAR(255)  NULL,
-    ADD COLUMN IF NOT EXISTS TermMonths           INT           NULL,
-    ADD COLUMN IF NOT EXISTS MonthlyPaymentAmount DECIMAL(18,2) NULL,
-    ADD COLUMN IF NOT EXISTS PrincipalOutstanding DECIMAL(18,2) NULL,
-    ADD COLUMN IF NOT EXISTS InterestAccrued      DECIMAL(18,2) NOT NULL DEFAULT 0.00,
-    ADD COLUMN IF NOT EXISTS NextPaymentDate      DATE          NULL,
-    ADD COLUMN IF NOT EXISTS DisbursementDate     DATE          NULL,
-    ADD COLUMN IF NOT EXISTS ApprovalStatus       ENUM('Pending','Approved','Rejected','Disbursed','InArrears','Paid','WrittenOff') NOT NULL DEFAULT 'Pending',
-    ADD COLUMN IF NOT EXISTS ApprovedByUserID     INT           NULL,
-    ADD COLUMN IF NOT EXISTS RejectionReason      TEXT          NULL,
-    ADD COLUMN IF NOT EXISTS LinkedAccountID      INT           NULL,
-    ADD COLUMN IF NOT EXISTS CreatedByUserID      INT           NULL;
+    ADD COLUMN Purpose              VARCHAR(255)  NULL,
+    ADD COLUMN TermMonths           INT           NULL,
+    ADD COLUMN MonthlyPaymentAmount DECIMAL(18,2) NULL,
+    ADD COLUMN PrincipalOutstanding DECIMAL(18,2) NULL,
+    ADD COLUMN InterestAccrued      DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    ADD COLUMN NextPaymentDate      DATE          NULL,
+    ADD COLUMN DisbursementDate     DATE          NULL,
+    ADD COLUMN ApprovalStatus       ENUM('Pending','Approved','Rejected','Disbursed','InArrears','Paid','WrittenOff') NOT NULL DEFAULT 'Pending',
+    ADD COLUMN ApprovedByUserID     INT           NULL,
+    ADD COLUMN RejectionReason      TEXT          NULL,
+    ADD COLUMN LinkedAccountID      INT           NULL,
+    ADD COLUMN CreatedByUserID      INT           NULL;
 
-ALTER TABLE Loans
-    ADD CONSTRAINT IF NOT EXISTS fk_loan_approved_by    FOREIGN KEY (ApprovedByUserID)  REFERENCES AppUsers(UserID)    ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_loan_linked_account FOREIGN KEY (LinkedAccountID)   REFERENCES Accounts(AccountID) ON DELETE SET NULL,
-    ADD CONSTRAINT IF NOT EXISTS fk_loan_created_by     FOREIGN KEY (CreatedByUserID)   REFERENCES AppUsers(UserID)    ON DELETE SET NULL;
+ALTER TABLE Loans ADD CONSTRAINT fk_loan_approved_by FOREIGN KEY (ApprovedByUserID) REFERENCES AppUsers(UserID) ON DELETE SET NULL;
+ALTER TABLE Loans ADD CONSTRAINT fk_loan_linked_account FOREIGN KEY (LinkedAccountID) REFERENCES Accounts(AccountID) ON DELETE SET NULL;
+ALTER TABLE Loans ADD CONSTRAINT fk_loan_created_by FOREIGN KEY (CreatedByUserID) REFERENCES AppUsers(UserID) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS LoanRepayments (
     RepaymentID      INT           AUTO_INCREMENT PRIMARY KEY,
