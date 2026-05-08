@@ -37,19 +37,32 @@ def customer_network(
                 date_conds += " AND txn_date <= %s"
                 date_params.append(date_to)
 
-            cursor.execute(
-                f"""
-                SELECT from_customer_id, to_customer_id, from_name, to_name,
-                       SUM(amount) AS total_amount, COUNT(*) AS txn_count
-                FROM vw_transfer_pairs
-                WHERE (from_customer_id = %s OR to_customer_id = %s)
+            _TRANSFER_SQL = f"""
+                SELECT
+                    aout.CustomerID AS from_customer_id,
+                    ain.CustomerID  AS to_customer_id,
+                    CONCAT(CONVERT(AES_DECRYPT(cf.FirstName,@encryption_key) USING utf8mb4),' ',
+                           CONVERT(AES_DECRYPT(cf.LastName, @encryption_key) USING utf8mb4)) AS from_name,
+                    CONCAT(CONVERT(AES_DECRYPT(ct.FirstName,@encryption_key) USING utf8mb4),' ',
+                           CONVERT(AES_DECRYPT(ct.LastName, @encryption_key) USING utf8mb4)) AS to_name,
+                    SUM(tout.Amount)  AS total_amount,
+                    COUNT(*)          AS txn_count
+                FROM Transactions tout
+                JOIN Transactions tin  ON tout.ReferenceID = tin.ReferenceID
+                                      AND tout.TransactionType = 'Transfer_Out'
+                                      AND tin.TransactionType  = 'Transfer_In'
+                JOIN Accounts aout ON tout.AccountID = aout.AccountID
+                JOIN Accounts ain  ON tin.AccountID  = ain.AccountID
+                JOIN Customers cf  ON aout.CustomerID = cf.CustomerID
+                JOIN Customers ct  ON ain.CustomerID  = ct.CustomerID
+                WHERE aout.CustomerID != ain.CustomerID
+                  AND (aout.CustomerID = %s OR ain.CustomerID = %s)
                   {date_conds}
-                GROUP BY from_customer_id, to_customer_id, from_name, to_name
+                GROUP BY aout.CustomerID, ain.CustomerID, cf.FirstName, cf.LastName, ct.FirstName, ct.LastName
                 ORDER BY total_amount DESC
                 LIMIT 200
-                """,
-                [customer_id, customer_id, *date_params],
-            )
+            """
+            cursor.execute(_TRANSFER_SQL, [customer_id, customer_id, *date_params])
             direct_edges = cursor.fetchall()
 
             nodes = {}
@@ -80,13 +93,28 @@ def customer_network(
                     placeholders = ",".join(["%s"] * len(neighbor_ids))
                     cursor.execute(
                         f"""
-                        SELECT from_customer_id, to_customer_id, from_name, to_name,
-                               SUM(amount) AS total_amount, COUNT(*) AS txn_count
-                        FROM vw_transfer_pairs
-                        WHERE (from_customer_id IN ({placeholders}) OR to_customer_id IN ({placeholders}))
-                          AND from_customer_id != %s AND to_customer_id != %s
+                        SELECT
+                            aout.CustomerID AS from_customer_id,
+                            ain.CustomerID  AS to_customer_id,
+                            CONCAT(CONVERT(AES_DECRYPT(cf.FirstName,@encryption_key) USING utf8mb4),' ',
+                                   CONVERT(AES_DECRYPT(cf.LastName, @encryption_key) USING utf8mb4)) AS from_name,
+                            CONCAT(CONVERT(AES_DECRYPT(ct.FirstName,@encryption_key) USING utf8mb4),' ',
+                                   CONVERT(AES_DECRYPT(ct.LastName, @encryption_key) USING utf8mb4)) AS to_name,
+                            SUM(tout.Amount) AS total_amount,
+                            COUNT(*) AS txn_count
+                        FROM Transactions tout
+                        JOIN Transactions tin  ON tout.ReferenceID = tin.ReferenceID
+                                              AND tout.TransactionType = 'Transfer_Out'
+                                              AND tin.TransactionType  = 'Transfer_In'
+                        JOIN Accounts aout ON tout.AccountID = aout.AccountID
+                        JOIN Accounts ain  ON tin.AccountID  = ain.AccountID
+                        JOIN Customers cf  ON aout.CustomerID = cf.CustomerID
+                        JOIN Customers ct  ON ain.CustomerID  = ct.CustomerID
+                        WHERE aout.CustomerID != ain.CustomerID
+                          AND (aout.CustomerID IN ({placeholders}) OR ain.CustomerID IN ({placeholders}))
+                          AND aout.CustomerID != %s AND ain.CustomerID != %s
                           {date_conds}
-                        GROUP BY from_customer_id, to_customer_id, from_name, to_name
+                        GROUP BY aout.CustomerID, ain.CustomerID, cf.FirstName, cf.LastName, ct.FirstName, ct.LastName
                         ORDER BY total_amount DESC
                         LIMIT {200 - len(edges)}
                         """,
