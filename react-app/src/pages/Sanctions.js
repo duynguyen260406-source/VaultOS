@@ -171,7 +171,7 @@ export default function Sanctions() {
                       <td><${StatusPill} s=${r.status} /></td>
                       <td style="font-size:12px;color:var(--body-muted);">${fmt.datetime(r.screened_at)}</td>
                       <td>
-                        ${r.status === 'PendingReview' && html`
+                        ${r.status === 'Pending Review' && html`
                           <div style="display:flex;gap:4px;flex-wrap:wrap;">
                             ${REVIEW_OPTS.map(s => html`
                               <button key=${s} className="btn btn-ghost btn-sm"
@@ -182,7 +182,7 @@ export default function Sanctions() {
                             `)}
                           </div>
                         `}
-                        ${r.status !== 'PendingReview' && html`<span style="font-size:11px;color:var(--muted-foreground);">${r.reviewed_by_username || '—'}</span>`}
+                        ${r.status !== 'Pending Review' && html`<span style="font-size:11px;color:var(--muted-foreground);">${r.reviewed_by_username || '—'}</span>`}
                       </td>
                     </tr>
                   `)}
