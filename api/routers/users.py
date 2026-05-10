@@ -129,6 +129,8 @@ def create_user(body: CreateAppUserRequest, current_user: dict = Depends(require
     except AppUserAuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
     except MySQLError as e:
+        if hasattr(e, "errno") and e.errno == 1062:
+            raise HTTPException(status_code=409, detail="Username already taken. Please choose a different username.")
         raise db_error_to_http(e)
 
     return _normalize_row(row)

@@ -71,6 +71,7 @@ export default function Customers() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (creating) return;
     if (!form.first_name || !form.last_name || !form.date_of_birth || !form.gender || !form.email || !form.phone) {
       setCreateError('Please fill all required fields.'); return;
     }

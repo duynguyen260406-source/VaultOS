@@ -113,10 +113,19 @@ export default function Loans() {
         purpose: form.purpose || null,
         start_date: form.start_date,
       };
-      if (!d.customer_id || !d.branch_id || !d.linked_account_id) throw new Error('Customer, branch and linked account are required.');
-      if (!d.loan_amount || d.loan_amount <= 0) throw new Error('Loan amount must be greater than zero.');
-      if (!d.interest_rate || d.interest_rate <= 0) throw new Error('Interest rate required.');
-      if (!d.term_months || d.term_months <= 0) throw new Error('Term months required.');
+      const errs = [];
+      if (!d.customer_id) errs.push('Customer is required.');
+      if (!d.branch_id) errs.push('Branch is required.');
+      if (!d.linked_account_id) errs.push('Linked account is required.');
+      if (!form.loan_amount) errs.push('Loan amount is required.');
+      else if (isNaN(d.loan_amount) || d.loan_amount <= 0) errs.push('Loan amount must be greater than zero.');
+      if (!form.interest_rate) errs.push('Interest rate is required.');
+      else if (isNaN(d.interest_rate) || d.interest_rate <= 0) errs.push('Interest rate must be greater than zero.');
+      else if (d.interest_rate >= 100) errs.push('Interest rate must be less than 100%.');
+      if (!form.term_months) errs.push('Term (months) is required.');
+      else if (isNaN(d.term_months) || d.term_months <= 0) errs.push('Term must be greater than zero months.');
+      else if (d.term_months > 360) errs.push('Term cannot exceed 360 months.');
+      if (errs.length) throw new Error(errs.join(' '));
       await api.applyLoan(d);
       toast.success('Loan application submitted.');
       setApplyModal(false); load();

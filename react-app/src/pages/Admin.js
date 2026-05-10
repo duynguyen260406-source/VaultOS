@@ -91,8 +91,10 @@ export default function Admin() {
       const { type, editItem } = modal;
       if (type === 'users') {
         const d = { username: form.username.trim(), role: form.role, status: form.status, employee_id: parseInt(form.employee_id) || null };
+        if (!d.username || d.username.length < 3) throw new Error('Username must be at least 3 characters.');
         if (!editItem) {
-          if (!form.password || form.password.length < 8) throw new Error('Password must be at least 8 characters.');
+          if (!form.password) throw new Error('Password is required.');
+          if (form.password.length < 8) throw new Error('Password must be at least 8 characters.');
           d.password = form.password;
         }
         editItem ? await api.updateUser(editItem.user_id, d) : await api.createUser(d);

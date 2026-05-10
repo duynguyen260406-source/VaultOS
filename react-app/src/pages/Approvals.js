@@ -89,10 +89,19 @@ function DecideModal({ approval, action, onClose, onDone }) {
   const { addToast } = useToast();
   const [notes, setNotes]         = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [accountBalance, setAccountBalance] = useState(null);
   const isReject = action === 'rejected';
   const meta = isReject
     ? { label: 'Reject',  color: '#ef4444', bg: 'rgba(239,68,68,.1)',  border: 'rgba(239,68,68,.25)' }
     : { label: 'Approve', color: '#22c55e', bg: 'rgba(34,197,94,.1)',  border: 'rgba(34,197,94,.25)' };
+
+  useEffect(() => {
+    const acctId = approval.payload?.account_id || approval.payload?.from_account_id;
+    if (!acctId || approval.request_type === 'deposit') return;
+    api.getAccount(acctId).then(acc => {
+      if (acc) setAccountBalance(acc.balance ?? null);
+    }).catch(() => {});
+  }, [approval.approval_id]);
 
   async function submit() {
     if (isReject && !notes.trim()) {
@@ -163,6 +172,19 @@ function DecideModal({ approval, action, onClose, onDone }) {
             <div style=${{ fontFamily: 'monospace', fontSize: 13, color: 'var(--foreground)', lineHeight: 1.6 }}>
               ${formatPayload(type, approval.payload)}
             </div>
+            ${accountBalance !== null && html`
+              <div style=${{ marginTop: 8, padding: '6px 10px', borderRadius: 6, background: 'rgba(255,255,255,.04)', border: '1px solid var(--border)', fontSize: 12 }}>
+                <span style=${{ color: 'var(--muted-foreground)' }}>
+                  ${type === 'transfer' ? 'Source account' : 'Account'} balance:
+                </span>
+                <strong style=${{ color: accountBalance < Number(approval.payload?.amount) ? '#ef4444' : '#22c55e', marginLeft: 6 }}>
+                  ${fmt.currency(accountBalance)}
+                </strong>
+                ${accountBalance < Number(approval.payload?.amount) && html`
+                  <span style=${{ color: '#f59e0b', marginLeft: 8, fontSize: 11 }}>⚠ Insufficient funds</span>
+                `}
+              </div>
+            `}
             <div style=${{ marginTop: 10, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               <span style=${{ fontSize: 11, color: 'var(--muted-foreground)' }}>
                 Requested by <strong style=${{ color: 'var(--foreground)' }}>${approval.requested_by_username}</strong>

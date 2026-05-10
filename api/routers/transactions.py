@@ -9,6 +9,7 @@ from mysql.connector import Error as MySQLError
 
 from approval_payloads import create_approval
 from banking_ops import deposit, transfer, withdraw
+from db_connection import get_db
 from dependencies import db_error_to_http, require_teller_or_manager
 from models.transactions import (
     DepositRequest,
@@ -19,6 +20,20 @@ from models.transactions import (
 from rule_lookup import get_approval_threshold
 
 router = APIRouter()
+
+
+def _get_account_balance(account_id: int) -> float | None:
+    """Return the current balance of an account, or None if not found."""
+    try:
+        with get_db() as (conn, cursor):
+            cursor.execute(
+                "SELECT Balance FROM Accounts WHERE AccountID = %s AND Status = 'active'",
+                (account_id,),
+            )
+            row = cursor.fetchone()
+            return float(row["Balance"]) if row else None
+    except MySQLError:
+        return None
 
 
 def _approval_response_if_needed(request_type: str, payload: dict, amount, user: dict):
@@ -64,6 +79,16 @@ def api_deposit(req: DepositRequest, user=Depends(require_teller_or_manager)):
 
 @router.post("/withdraw")
 def api_withdraw(req: WithdrawRequest, user=Depends(require_teller_or_manager)):
+    threshold = get_approval_threshold()
+    if req.amount >= threshold:
+        balance = _get_account_balance(req.account_id)
+        if balance is None:
+            raise HTTPException(status_code=404, detail="Account not found or inactive.")
+        if req.amount > balance:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Insufficient funds. Account balance is {balance:,.0f} VND.",
+            )
     pending = _approval_response_if_needed(
         "withdraw",
         {"request_type": "withdraw", "account_id": req.account_id, "amount": str(req.amount)},
@@ -87,6 +112,16 @@ def api_withdraw(req: WithdrawRequest, user=Depends(require_teller_or_manager)):
 
 @router.post("/transfer")
 def api_transfer(req: TransferRequest, user=Depends(require_teller_or_manager)):
+    threshold = get_approval_threshold()
+    if req.amount >= threshold:
+        balance = _get_account_balance(req.from_account_id)
+        if balance is None:
+            raise HTTPException(status_code=404, detail="Source account not found or inactive.")
+        if req.amount > balance:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Insufficient funds. Source account balance is {balance:,.0f} VND.",
+            )
     pending = _approval_response_if_needed(
         "transfer",
         {

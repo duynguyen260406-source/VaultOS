@@ -295,8 +295,8 @@ export default function Transactions() {
                   <${QuickAmounts} onSelect=${setDAmount} />
                 </div>
                 ${dError && html`<div className="alert alert-danger" style="font-size:12.5px;">${dError}</div>`}
-                <button type="submit" disabled=${submitting === 'deposit' || !dHook.account || !dAmount}
-                  style="width:100%;justify-content:center;padding:10px;border-radius:8px;border:1px solid rgba(34,197,94,.25);background:rgba(34,197,94,.1);color:#22c55e;font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;transition:opacity .15s;opacity:${(submitting === 'deposit' || !dHook.account || !dAmount) ? .4 : 1};">
+                <button type="submit" disabled=${submitting === 'deposit' || !dHook.account || !(parseFloat(dAmount) > 0)}
+                  style="width:100%;justify-content:center;padding:10px;border-radius:8px;border:1px solid rgba(34,197,94,.25);background:rgba(34,197,94,.1);color:#22c55e;font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;transition:opacity .15s;opacity:${(submitting === 'deposit' || !dHook.account || !(parseFloat(dAmount) > 0)) ? .4 : 1};">
                   ${submitting === 'deposit' ? html`<${Spinner} />` : html`
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 5 5 12"/></svg>
                     Confirm Deposit
@@ -328,8 +328,8 @@ export default function Transactions() {
                   <${QuickAmounts} onSelect=${setWAmount} />
                 </div>
                 ${wError && html`<div className="alert alert-danger" style="font-size:12.5px;">${wError}</div>`}
-                <button type="submit" disabled=${submitting === 'withdraw' || !wHook.account || !wAmount}
-                  style="width:100%;justify-content:center;padding:10px;border-radius:8px;border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.1);color:#ef4444;font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;transition:opacity .15s;opacity:${(submitting === 'withdraw' || !wHook.account || !wAmount) ? .4 : 1};">
+                <button type="submit" disabled=${submitting === 'withdraw' || !wHook.account || !(parseFloat(wAmount) > 0)}
+                  style="width:100%;justify-content:center;padding:10px;border-radius:8px;border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.1);color:#ef4444;font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;transition:opacity .15s;opacity:${(submitting === 'withdraw' || !wHook.account || !(parseFloat(wAmount) > 0)) ? .4 : 1};">
                   ${submitting === 'withdraw' ? html`<${Spinner} />` : html`
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 19 19 12"/></svg>
                     Confirm Withdrawal
@@ -367,8 +367,8 @@ export default function Transactions() {
                   <${QuickAmounts} onSelect=${setTAmount} />
                 </div>
                 ${tError && html`<div className="alert alert-danger" style="font-size:12.5px;">${tError}</div>`}
-                <button type="submit" disabled=${submitting === 'transfer' || !tFromHook.account || !tToHook.account || !tAmount}
-                  style="width:100%;justify-content:center;padding:10px;border-radius:8px;border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.1);color:#f59e0b;font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;transition:opacity .15s;opacity:${(submitting === 'transfer' || !tFromHook.account || !tToHook.account || !tAmount) ? .4 : 1};">
+                <button type="submit" disabled=${submitting === 'transfer' || !tFromHook.account || !tToHook.account || !(parseFloat(tAmount) > 0)}
+                  style="width:100%;justify-content:center;padding:10px;border-radius:8px;border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.1);color:#f59e0b;font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;transition:opacity .15s;opacity:${(submitting === 'transfer' || !tFromHook.account || !tToHook.account || !(parseFloat(tAmount) > 0)) ? .4 : 1};">
                   ${submitting === 'transfer' ? html`<${Spinner} />` : html`
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                     Confirm Transfer
